@@ -1,0 +1,146 @@
+u8R"(
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title></title>
+	<script type="text/javascript" src="ACJSWCL.js"></script>
+	<link rel="stylesheet" href="clean_light.css">
+    <style type="text/css">
+        #contentContainer
+        {
+            justify-content: space-evenly;
+        }
+    </style>
+</head>
+<body>
+    <script type="text/javascript">
+        class ProcessesComponent extends DeferredComponent
+        {
+            //Constructor
+            constructor()
+            {
+                super();
+
+                this._InitState({
+                    processes: []
+                });
+
+                this.__timer = setInterval(this.__OnQueryData.bind(this), 1000);
+            }
+
+            //Protected methods
+            _RenderContent()
+            {
+                return new VElement("div", { style: { display: "flex", justifyContent: "space-evenly" } },
+                    ...this.state.processes.map(p =>
+                        new VElement("div", { className: "box", style: { flexDirection: "column" } },
+                            new Heading(4, { textContent: p.title }),
+                            new VElement("table", { className: "keyValue" },
+                                new VElement("tr", {},
+                                    new VElement("th", { textContent: "Process started on" }),
+                                    new VElement("td", { textContent: p.startTime + "Z" }),
+                                ),
+                                new VElement("tr", {},
+                                    new VElement("th", { textContent: "Process ended on" }),
+                                    new VElement("td", { textContent: ("endTime" in p) ? (p.endTime + "Z") : "-" }),
+                                ),
+                                new VElement("tr", {},
+                                    new VElement("th", { textContent: "Total duration" }),
+                                    new VElement("td", { textContent: DurationToString(p.duration_millisecs) }),
+                                ),
+                                ...this.__RenderExtraTaskData(p),
+                            ),
+                            this.__RenderLoader(p.progress)
+                        ),
+                    ),
+                );
+            }
+
+            //Private methods
+            __RenderExtraTaskData(p)
+            {
+                if((p.progress === true || p.progress === false))
+                    return this.__RenderUnknownEndTask(p);
+                return this.__RenderKnownEndTask(p);
+            }
+
+            __RenderKnownEndTask(p)
+            {
+                return [
+                    new VElement("tr", {},
+                        new VElement("th", { textContent: "Finished files" }),
+                        new VElement("td", { textContent: p.nFinishedFiles + " of " + p.nFiles }),
+                    ),
+                    new VElement("tr", {},
+                        new VElement("th", { textContent: "Finished size" }),
+                        new VElement("td", { textContent: FormatBinaryPrefixed(p.doneSize) + " of " + FormatBinaryPrefixed(p.totalSize) }),
+                    ),
+                    new VElement("tr", {},
+                        new VElement("th", { textContent: "Speed" }),
+                        new VElement("td", { textContent: FormatBinaryPrefixed(p.doneSize * 1000 / p.duration_millisecs, "B/s") }),
+                    )
+                ];
+            }
+
+            __RenderLoader(progress)
+            {
+                let isUnknownEnd = (progress === true || progress === false);
+                if(progress === true)
+                    return null;
+                if(progress === false)
+                    return new VElement("div", { className: "loadingSpinner" });
+                return new VElement("progress", { value: progress });
+            }
+
+            __RenderUnknownEndTask(p)
+            {
+                return [
+                    new VElement("tr", {},
+                        new VElement("th", { textContent: "Found files" }),
+                        new VElement("td", { textContent: p.nFiles }),
+                    ),
+                ];
+            }
+
+            //Event handlers
+            async __OnQueryData()
+            {
+                try {
+                    let processesData = await AsyncAjax({
+                        url: "/data",
+                        responseType: "json"
+                    });
+                    this.state.processes = processesData;
+                    this.ShowContent();
+                }
+                catch(e)
+                {
+                    if(e == 0) //server is not responding (anymore?)
+                    {
+                        clearInterval(this.__timer);
+                        this.__timer = null;
+                    }
+                    else
+                    {
+                        console.log("AN ERROR OCCURED!");
+                    }
+                }
+            }
+        }
+        ProcessesComponent.title = "Processes"
+
+        var app = new App({
+            title: "ACBackup",
+            version: "v1",
+            mountPoint: document.body,
+            globalViews: [],
+            routes: [
+                {path: window.location.pathname, component: ProcessesComponent}
+            ]
+        });
+    </script>
+	<!--<script type="text/javascript" src="app.js"></script>-->
+</body>
+</html>
+)"
