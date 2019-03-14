@@ -109,7 +109,8 @@ u8R"(
                 try {
                     let processesData = await AsyncAjax({
                         url: "/data",
-                        responseType: "json"
+                        responseType: "json",
+                        cache: false
                     });
                     this.state.processes = processesData;
                     this.ShowContent();

@@ -39,7 +39,7 @@ public:
 
 	//Abstract
 	virtual void AddPreviousFile(const Path& filePath, const FileIndex& index) = 0;
-	virtual float32 BackupFile(const Path& filePath, const FileIndex& index, float32 compressionRate) = 0;
+	virtual float32 BackupFile(const Path& filePath, const FileIndex& index, float32 compressionRate, const uint64 memLimit) = 0;
 	virtual bool HasFileData(uint32 index) const = 0;
 	virtual void Serialize() const = 0;
 

@@ -25,17 +25,18 @@ static void PrintManual()
 {
 	stdOut << u8"Usage: ACBackup command [args...] [options...]" << endl
 		   << endl
+		   << u8"command: add-snapshot" << endl
+		   << u8"Backup a new snapshot into backup directory. Verifies the snapshot after backup." << endl
+		   << u8"Args: source directory" << endl
+		   << u8"Options:" << endl
+		   << u8"-l size\t>Limit in MiB for files that are compressed in memory rather than streamed. Defaults to 0 (i.e. never compress in memory)."
+		   << endl
+
 		   << u8"command: init" << endl
 		   << u8"Initialize new empty backup directory in current working directory." << endl
 		   << u8"Args: none" << endl
 		   << u8"Options:" << endl
 		   << u8"-e\tEncrypt backup dir" << endl
-		   << endl
-
-		   << u8"command: add-snapshot" << endl
-		   << u8"Backup a new snapshot into backup directory. Verifies the snapshot after backup." << endl
-		   << u8"Args: source directory" << endl
-		   << u8"Options: none" << endl
 		   << endl
 
 		   << u8"command: verify" << endl
@@ -57,13 +58,13 @@ static void PrintManual()
 		   << endl;
 };
 
-static int32 AddSnapshot(const Path& backupPath, const Path& sourcePath)
+static int32 AddSnapshot(const Path& backupPath, const Path& sourcePath, uint64 limit)
 {
 	BackupManager backupManager(backupPath);
 	StatusTracker tracker;
 
 	FileSystemIndex sourceIndex(sourcePath, tracker);
-	backupManager.AddSnapshot(sourceIndex, tracker);
+	backupManager.AddSnapshot(sourceIndex, tracker, limit);
 
 	return EXIT_SUCCESS;
 }
@@ -158,11 +159,16 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 	}
 
 	//TODO debugging
-	Init(OSFileSystem::GetInstance().GetWorkingDirectory(), false);
-	//add-snapshot /Users/amir/git-repositories/Hooking
-	//add-snapshot /Users/amir/Desktop
-	//verify-snapshot snapshot_2019-02-22_19_59_01
+	//Init(OSFileSystem::GetInstance().GetWorkingDirectory(), false);
+	//add-snapshot /Users/amir/Desktop -l 128
+	//add-snapshot /Users/amir/Downloads -l 128
+	//verify-snapshot snapshot_2019-03-14_22_22_52
 	//TODO end debugging
+
+	/*
+	 * LZMA stats: ca. 1 - 2 mb/s for compression
+	 * 17 mb/s uncompressing
+	 */
 
 	Path backupDir = OSFileSystem::GetInstance().GetWorkingDirectory();
 	const String& command = args[0];
@@ -173,9 +179,20 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 			stdErr << u8"Missing source path" << endl;
 			return EXIT_FAILURE;
 		}
+
+		uint64 memLimit = 0;
+		for(uint32 i = 2; i < args.GetNumberOfElements(); i++)
+		{
+			if(args[i] == u8"-l")
+			{
+				i++;
+				memLimit = args[i].ToUInt();
+			}
+		}
+
 		Path sourcePath = OSFileSystem::GetInstance().FromNativePath(args[1]);
 
-		return AddSnapshot(backupDir, sourcePath);
+		return AddSnapshot(backupDir, sourcePath, memLimit);
 	}
 	else if(command == u8"init")
 	{

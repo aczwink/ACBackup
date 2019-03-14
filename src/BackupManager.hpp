@@ -30,7 +30,7 @@ public:
 	~BackupManager();
 
 	//Methods
-	void AddSnapshot(const FileIndex& index, StatusTracker& tracker);
+	void AddSnapshot(const FileIndex& index, StatusTracker& tracker, const uint64 memLimit);
 	void VerifySnapshot(const Snapshot& snapshot, StatusTracker& tracker) const;
 
 	//Functions
@@ -55,6 +55,7 @@ private:
 	Path backupPath;
 	DynamicArray<Snapshot> snapshots;
 	Map<String, float32> compressionStats;
+	Mutex compressionStatsLock;
 	mutable StaticThreadPool threadPool;
 
 	//Methods

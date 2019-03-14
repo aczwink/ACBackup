@@ -37,6 +37,7 @@ StatusTracker::StatusTracker(uint16 port) : httpServer(*this, port), thread(Netw
 //Destructor
 StatusTracker::~StatusTracker()
 {
+	Sleep(uint64(2) * 1000 * 1000 * 1000); //Wait so that status trackers can get the result
 	stdOut << u8"Shutting down server..." << endl;
 	this->httpServer.Shutdown();
 	this->thread.Join();

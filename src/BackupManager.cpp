@@ -60,7 +60,7 @@ BackupManager::~BackupManager()
 }
 
 //Public methods
-void BackupManager::AddSnapshot(const FileIndex &index, StatusTracker& tracker)
+void BackupManager::AddSnapshot(const FileIndex &index, StatusTracker& tracker, const uint64 memLimit)
 {
 	DateTime dateTime = DateTime::Now();
 	String snapshotName = u8"snapshot_" + dateTime.GetDate().ToISOString() + u8"_";
@@ -80,47 +80,50 @@ void BackupManager::AddSnapshot(const FileIndex &index, StatusTracker& tracker)
 	ProcessStatus& process = tracker.AddProcessStatusTracker(u8"Creating snapshot: " + snapshotName, index.GetNumberOfFiles(), totalSize);
 	for(uint32 i = 0; i < index.GetNumberOfFiles(); i++)
 	{
-		const Path& filePath = index.GetFile(i);
-		const FileAttributes& fileAttributes = index.GetFileAttributes(i);
+		this->threadPool.EnqueueTask([i, &index, prevSnapshot, &snapshot, &process, this, memLimit](){
+			const Path& filePath = index.GetFile(i);
+			const FileAttributes& fileAttributes = index.GetFileAttributes(i);
 
-		uint32 prevIndex = prevSnapshot ? prevSnapshot->FindFileIndex(filePath) : Unsigned<uint32>::Max();
-		bool backupFile = false;
-		if(prevIndex != Unsigned<uint32>::Max())
-		{
-			const FileAttributes& prevFileAttributes = prevSnapshot->GetFileAttributes(prevIndex);
+			uint32 prevIndex = prevSnapshot ? prevSnapshot->FindFileIndex(filePath) : Unsigned<uint32>::Max();
+			bool backupFile = false;
+			if(prevIndex != Unsigned<uint32>::Max())
+			{
+				const FileAttributes& prevFileAttributes = prevSnapshot->GetFileAttributes(prevIndex);
 
-			//this file is known
-			bool didChange = !((fileAttributes.size == prevFileAttributes.size) && (MemCmp(fileAttributes.digest, prevFileAttributes.digest, sizeof(prevFileAttributes.digest)) == 0));
-			if(didChange)
-				backupFile = true; //back it up again
+				//this file is known
+				bool didChange = !((fileAttributes.size == prevFileAttributes.size) && (MemCmp(fileAttributes.digest, prevFileAttributes.digest, sizeof(prevFileAttributes.digest)) == 0));
+				if(didChange)
+					backupFile = true; //back it up again
+				else
+				{
+					snapshot->AddPreviousFile(filePath, index); //don't back it up again, but make a hint that a previous snapshot has it
+				}
+			}
 			else
 			{
-				snapshot->AddPreviousFile(filePath, index); //don't back it up again, but make a hint that a previous snapshot has it
+				backupFile = true; //new file
 			}
-		}
-		else
-		{
-			backupFile = true; //new file
-		}
 
-		if(backupFile)
-		{
-			Clock c;
-			c.Start();
+			if(backupFile)
+			{
+				Clock c;
+				c.Start();
 
-			String ext = filePath.GetFileExtension();
-			float32 compressionRate = this->GetCompressionRate(ext);
-			compressionRate = snapshot->BackupFile(filePath, index, compressionRate);
-			this->AddCompressionRateSample(ext, compressionRate);
+				String ext = filePath.GetFileExtension();
+				float32 compressionRate = this->GetCompressionRate(ext);
+				compressionRate = snapshot->BackupFile(filePath, index, compressionRate, memLimit);
+				this->AddCompressionRateSample(ext, compressionRate);
 
-			process.AddFinishedSize(fileAttributes.size, c.GetElapsedMicroseconds());
-		}
-		else
-		{
-			process.ReduceTotalSize(fileAttributes.size);
-		}
-		process.IncFinishedCount();
+				process.AddFinishedSize(fileAttributes.size, c.GetElapsedMicroseconds());
+			}
+			else
+			{
+				process.ReduceTotalSize(fileAttributes.size);
+			}
+			process.IncFinishedCount();
+		});
 	}
+	this->threadPool.WaitForAllTasksToComplete();
 	process.Finished();
 
 	snapshot->Serialize();
@@ -205,6 +208,8 @@ void BackupManager::WriteCompressionStatsFile(const Path &path, const Map<String
 //Private methods
 void BackupManager::AddCompressionRateSample(const String &fileExtension, float32 compressionRate)
 {
+	AutoLock lock(this->compressionStatsLock);
+
 	String extLower = fileExtension.ToLowercase();
 	this->compressionStats[extLower] = (this->compressionStats[extLower] + compressionRate) / 2.0f;
 }
@@ -220,6 +225,8 @@ void BackupManager::DropSnapshots()
 
 float32 BackupManager::GetCompressionRate(const String &fileExtension)
 {
+	AutoLock lock(this->compressionStatsLock);
+
 	String extLower = fileExtension.ToLowercase();
 	if(!this->compressionStats.Contains(extLower))
 		this->compressionStats[extLower] = 0; //assume at first that file is perfectly compressible

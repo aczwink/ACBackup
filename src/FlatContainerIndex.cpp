@@ -50,11 +50,12 @@ void FlatContainerIndex::AddPreviousFile(const Path &filePath, const FileIndex &
 	backupEntry.offset = Unsigned<uint64>::Max(); //special, means that we don't have it but another snapshot
 
 	//add entry
+	AutoLock lock(this->fileHeaderLock);
 	uint32 attrIndex = this->fileAttributes.Push(Move(backupEntry));
 	this->fileEntries.Insert(filePath, attrIndex);
 }
 
-float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileIndex& index, float32 compressionRate)
+float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileIndex& index, float32 compressionRate, const uint64 memLimit)
 {
 	const FileAttributes& fileAttributes = index.GetFileAttributes(index.FindFileIndex(filePath));
 
@@ -63,18 +64,43 @@ float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileIndex& in
 
 	MemCopy(backupEntry.digest, fileAttributes.digest, sizeof(fileAttributes.digest));
 	backupEntry.size = fileAttributes.size;
-	backupEntry.offset = this->writing.dataFile->GetCurrentOffset();
 
-	//transfer data
-	UniquePointer<InputStream> fileInputStream = index.OpenFileForReading(filePath);
 	uint8 compressionLevel = static_cast<uint8>(Math::Clamp(9.0f - compressionRate * 9.0f, 0.0f, 9.0f));
-	UniquePointer<Compressor> compressor = Compressor::Create(CompressionAlgorithm::LZMA, *this->writing.dataFile, compressionLevel);
-	fileInputStream->FlushTo(*compressor);
-	compressor->Flush();
+	if(fileAttributes.size < memLimit)
+	{
+		FIFOBuffer buffer;
+		buffer.EnsureCapacity(fileAttributes.size);
 
-	backupEntry.blockSize = this->writing.dataFile->GetCurrentOffset() - backupEntry.offset;
+		//filter data first
+		UniquePointer<InputStream> fileInputStream = index.OpenFileForReading(filePath);
+		UniquePointer<Compressor> compressor = Compressor::Create(CompressionAlgorithm::LZMA, buffer, compressionLevel);
+		fileInputStream->FlushTo(*compressor);
+		compressor->Flush();
+
+		//now write
+		AutoLock lock(this->writing.writeLock);
+
+		backupEntry.offset = this->writing.dataFile->GetCurrentOffset();
+		buffer.FlushTo(*this->writing.dataFile);
+		backupEntry.blockSize = this->writing.dataFile->GetCurrentOffset() - backupEntry.offset;
+	}
+	else
+	{
+		AutoLock lock(this->writing.writeLock);
+
+		backupEntry.offset = this->writing.dataFile->GetCurrentOffset();
+
+		//stream data
+		UniquePointer<InputStream> fileInputStream = index.OpenFileForReading(filePath);
+		UniquePointer<Compressor> compressor = Compressor::Create(CompressionAlgorithm::LZMA, *this->writing.dataFile, compressionLevel);
+		fileInputStream->FlushTo(*compressor);
+		compressor->Flush();
+
+		backupEntry.blockSize = this->writing.dataFile->GetCurrentOffset() - backupEntry.offset;
+	}
 
 	//add entry
+	AutoLock lock(this->fileHeaderLock);
 	uint32 attrIndex = this->fileAttributes.Push(Move(backupEntry));
 	this->fileEntries.Insert(filePath, attrIndex);
 

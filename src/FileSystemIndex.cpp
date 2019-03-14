@@ -70,6 +70,7 @@ FileSystemIndex::FileSystemIndex(const Path &path, StatusTracker& tracker) : bas
 			attrStatus.AddFinishedSize(hashedSize, c.GetElapsedMicroseconds());
 		});
 	}
+	attrStatus.Finished();
 	this->threadPool.WaitForAllTasksToComplete();
 }
 

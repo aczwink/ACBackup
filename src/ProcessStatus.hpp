@@ -27,6 +27,7 @@ public:
 	inline ProcessStatus(const String& title)
 			: title(title), startTime(DateTime::Now())
 	{
+		this->isEndDeterminate = false;
 		this->nFinishedFiles = 0;
 		this->nFiles = 0;
 		this->doneSize = 0;
@@ -37,6 +38,7 @@ public:
 	inline ProcessStatus(const String& title, uint32 nFiles, uint64 totalSize)
 			: title(title), nFiles(nFiles), totalSize(totalSize), startTime(DateTime::Now())
 	{
+		this->isEndDeterminate = true;
 		this->nFinishedFiles = 0;
 		this->doneSize = 0;
 		this->duration_microsecs = 0;
@@ -79,6 +81,7 @@ public:
 
 private:
 	//Members
+	bool isEndDeterminate;
 	mutable Mutex mutex;
 	String title;
 	uint32 nFinishedFiles;

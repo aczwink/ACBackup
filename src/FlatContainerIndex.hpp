@@ -34,7 +34,7 @@ public:
 
 	//Methods
 	void AddPreviousFile(const Path &filePath, const FileIndex &index) override;
-	float32 BackupFile(const Path& filePath, const FileIndex& index, float32 compressionRate) override;
+	float32 BackupFile(const Path& filePath, const FileIndex& index, float32 compressionRate, const uint64 memLimit) override;
 	uint32 FindFileIndex(const Path &path) const override;
 	const Path &GetFile(uint32 index) const override;
 	const FileAttributes &GetFileAttributes(uint32 index) const override;
@@ -54,6 +54,7 @@ public:
 
 private:
 	//Members
+	Mutex fileHeaderLock;
 	BijectiveMap<Path, uint32> fileEntries;
 	DynamicArray<FlatContainerFileAttributes> fileAttributes;
 	struct
@@ -62,6 +63,7 @@ private:
 	} reading;
 	struct
 	{
+		Mutex writeLock;
 		UniquePointer<FileOutputStream> dataFile;
 	} writing;
 
