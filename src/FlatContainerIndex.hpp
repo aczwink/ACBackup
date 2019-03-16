@@ -24,6 +24,7 @@ struct FlatContainerFileAttributes : public FileAttributes
 {
 	uint64 offset;
 	uint64 blockSize; //size of data after compression / encryption
+	bool isCompressed;
 };
 
 class FlatContainerIndex : public BackupContainerIndex
@@ -34,7 +35,7 @@ public:
 
 	//Methods
 	void AddPreviousFile(const Path &filePath, const FileIndex &index) override;
-	float32 BackupFile(const Path& filePath, const FileIndex& index, float32 compressionRate, const uint64 memLimit) override;
+	float32 BackupFile(const Path& filePath, const FileIndex& index, float32 compressionRate, int8 maxCompressionLevel, uint64 memLimit) override;
 	uint32 FindFileIndex(const Path &path) const override;
 	const Path &GetFile(uint32 index) const override;
 	const FileAttributes &GetFileAttributes(uint32 index) const override;

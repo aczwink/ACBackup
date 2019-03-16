@@ -52,8 +52,6 @@ FileSystemIndex::FileSystemIndex(const Path &path, StatusTracker& tracker) : bas
 			Path filePath = path / this->pathMap.GetReverse(i);
 			AutoPointer<const File> file = OSFileSystem::GetInstance().GetFile(filePath);
 
-			Clock c;
-			c.Start();
 			//compute digest
 			UniquePointer<InputStream> input = file->OpenForReading();
 			UniquePointer<Crypto::HashFunction> hasher = Crypto::HashFunction::CreateInstance(Crypto::HashAlgorithm::MD5);
@@ -67,11 +65,11 @@ FileSystemIndex::FileSystemIndex(const Path &path, StatusTracker& tracker) : bas
 			hasher->StoreDigest(attrs.digest);
 
 			attrStatus.IncFinishedCount();
-			attrStatus.AddFinishedSize(hashedSize, c.GetElapsedMicroseconds());
+			attrStatus.AddFinishedSize(hashedSize);
 		});
 	}
-	attrStatus.Finished();
 	this->threadPool.WaitForAllTasksToComplete();
+	attrStatus.Finished();
 }
 
 //Public methods

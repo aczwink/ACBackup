@@ -30,7 +30,7 @@ public:
 	~BackupManager();
 
 	//Methods
-	void AddSnapshot(const FileIndex& index, StatusTracker& tracker, const uint64 memLimit);
+	void AddSnapshot(const FileIndex& index, StatusTracker& tracker, int8 maxCompressionLevel, uint64 memLimit);
 	void VerifySnapshot(const Snapshot& snapshot, StatusTracker& tracker) const;
 
 	//Functions

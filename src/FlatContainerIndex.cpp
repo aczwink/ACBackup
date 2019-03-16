@@ -55,7 +55,7 @@ void FlatContainerIndex::AddPreviousFile(const Path &filePath, const FileIndex &
 	this->fileEntries.Insert(filePath, attrIndex);
 }
 
-float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileIndex& index, float32 compressionRate, const uint64 memLimit)
+float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileIndex& index, float32 compressionRate, const int8 maxCompressionLevel, const uint64 memLimit)
 {
 	const FileAttributes& fileAttributes = index.GetFileAttributes(index.FindFileIndex(filePath));
 
@@ -65,17 +65,36 @@ float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileIndex& in
 	MemCopy(backupEntry.digest, fileAttributes.digest, sizeof(fileAttributes.digest));
 	backupEntry.size = fileAttributes.size;
 
-	uint8 compressionLevel = static_cast<uint8>(Math::Clamp(9.0f - compressionRate * 9.0f, 0.0f, 9.0f));
-	if(fileAttributes.size < memLimit)
+	//compute compression level
+	float32 c = (maxCompressionLevel+1) * (1 - compressionRate);
+	uint8 compressionLevel = static_cast<uint8>(round(c));
+	backupEntry.isCompressed = !((maxCompressionLevel == -1) or (compressionLevel == 0));
+	compressionLevel--;
+
+	/*static Mutex m;
+	m.Lock();
+	stdOut << backupEntry.isCompressed << u8": " << compressionRate << u8" -> " << compressionLevel << endl;
+	m.Unlock();*/
+
+	bool filter = backupEntry.isCompressed; //TODO: or encrypt
+	if((fileAttributes.size < memLimit) && filter)
 	{
 		FIFOBuffer buffer;
-		buffer.EnsureCapacity(fileAttributes.size);
+		buffer.EnsureCapacity(static_cast<uint32>(fileAttributes.size));
 
 		//filter data first
+		OutputStream* sink = &buffer;
+		UniquePointer<Compressor> compressor;
+
 		UniquePointer<InputStream> fileInputStream = index.OpenFileForReading(filePath);
-		UniquePointer<Compressor> compressor = Compressor::Create(CompressionAlgorithm::LZMA, buffer, compressionLevel);
-		fileInputStream->FlushTo(*compressor);
-		compressor->Flush();
+		if(backupEntry.isCompressed)
+		{
+			compressor = Compressor::Create(CompressionAlgorithm::LZMA, *sink, compressionLevel);
+			sink = compressor.operator->();
+		}
+
+		fileInputStream->FlushTo(*sink);
+		sink->Flush();
 
 		//now write
 		AutoLock lock(this->writing.writeLock);
@@ -91,10 +110,18 @@ float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileIndex& in
 		backupEntry.offset = this->writing.dataFile->GetCurrentOffset();
 
 		//stream data
+		OutputStream* sink = this->writing.dataFile.operator->();
+		UniquePointer<Compressor> compressor;
+
 		UniquePointer<InputStream> fileInputStream = index.OpenFileForReading(filePath);
-		UniquePointer<Compressor> compressor = Compressor::Create(CompressionAlgorithm::LZMA, *this->writing.dataFile, compressionLevel);
-		fileInputStream->FlushTo(*compressor);
-		compressor->Flush();
+		if(backupEntry.isCompressed)
+		{
+			compressor = Compressor::Create(CompressionAlgorithm::LZMA, *this->writing.dataFile, compressionLevel);
+			sink = compressor.operator->();
+		}
+
+		fileInputStream->FlushTo(*sink);
+		sink->Flush();
 
 		backupEntry.blockSize = this->writing.dataFile->GetCurrentOffset() - backupEntry.offset;
 	}
@@ -173,6 +200,7 @@ void FlatContainerIndex::Serialize() const
 		bufferedOutputStream.WriteBytes(attributes.digest, sizeof(attributes.digest));
 		dataWriter.WriteUInt64(attributes.offset);
 		dataWriter.WriteUInt64(attributes.blockSize);
+		dataWriter.WriteByte(static_cast<byte>(attributes.isCompressed));
 	}
 	bufferedOutputStream.Flush();
 
@@ -214,6 +242,7 @@ void FlatContainerIndex::ReadIndexFile()
 		bufferedInputStream.ReadBytes(fileEntry.digest, sizeof(fileEntry.digest));
 		fileEntry.offset = dataReader.ReadUInt64();
 		fileEntry.blockSize = dataReader.ReadUInt64();
+		fileEntry.isCompressed = dataReader.ReadByte() != 0;
 
 		uint32 attrIndex = this->fileAttributes.Push(Move(fileEntry));
 		this->fileEntries.Insert(Move(filePath), attrIndex);

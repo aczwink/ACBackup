@@ -42,8 +42,8 @@ u8R"(
                                     new VElement("td", { textContent: p.startTime + "Z" }),
                                 ),
                                 new VElement("tr", {},
-                                    new VElement("th", { textContent: "Process ended on" }),
-                                    new VElement("td", { textContent: ("endTime" in p) ? (p.endTime + "Z") : "-" }),
+                                    new VElement("th", { textContent: ("endTime" in p) ? "Process ended on" : "Expected end time" }),
+                                    new VElement("td", { textContent: ("endTime" in p) ? (p.endTime + "Z") : (p.expectedEndTime + "Z") }),
                                 ),
                                 new VElement("tr", {},
                                     new VElement("th", { textContent: "Total duration" }),
@@ -57,7 +57,6 @@ u8R"(
                 );
             }
 
-            //Private methods
             __RenderExtraTaskData(p)
             {
                 if((p.progress === true || p.progress === false))
@@ -78,7 +77,7 @@ u8R"(
                     ),
                     new VElement("tr", {},
                         new VElement("th", { textContent: "Speed" }),
-                        new VElement("td", { textContent: FormatBinaryPrefixed(p.doneSize * 1000 / p.duration_millisecs, "B/s") }),
+                        new VElement("td", { textContent: FormatBinaryPrefixed(p.doneSize / (p.duration_millisecs / 1000), "B/s") }),
                     )
                 ];
             }

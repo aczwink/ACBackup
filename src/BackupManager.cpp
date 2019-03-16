@@ -60,7 +60,7 @@ BackupManager::~BackupManager()
 }
 
 //Public methods
-void BackupManager::AddSnapshot(const FileIndex &index, StatusTracker& tracker, const uint64 memLimit)
+void BackupManager::AddSnapshot(const FileIndex &index, StatusTracker& tracker, const int8 maxCompressionLevel, const uint64 memLimit)
 {
 	DateTime dateTime = DateTime::Now();
 	String snapshotName = u8"snapshot_" + dateTime.GetDate().ToISOString() + u8"_";
@@ -80,7 +80,7 @@ void BackupManager::AddSnapshot(const FileIndex &index, StatusTracker& tracker, 
 	ProcessStatus& process = tracker.AddProcessStatusTracker(u8"Creating snapshot: " + snapshotName, index.GetNumberOfFiles(), totalSize);
 	for(uint32 i = 0; i < index.GetNumberOfFiles(); i++)
 	{
-		this->threadPool.EnqueueTask([i, &index, prevSnapshot, &snapshot, &process, this, memLimit](){
+		this->threadPool.EnqueueTask([i, &index, prevSnapshot, &snapshot, &process, this, maxCompressionLevel, memLimit](){
 			const Path& filePath = index.GetFile(i);
 			const FileAttributes& fileAttributes = index.GetFileAttributes(i);
 
@@ -106,15 +106,12 @@ void BackupManager::AddSnapshot(const FileIndex &index, StatusTracker& tracker, 
 
 			if(backupFile)
 			{
-				Clock c;
-				c.Start();
-
 				String ext = filePath.GetFileExtension();
 				float32 compressionRate = this->GetCompressionRate(ext);
-				compressionRate = snapshot->BackupFile(filePath, index, compressionRate, memLimit);
+				compressionRate = snapshot->BackupFile(filePath, index, compressionRate, maxCompressionLevel, memLimit);
 				this->AddCompressionRateSample(ext, compressionRate);
 
-				process.AddFinishedSize(fileAttributes.size, c.GetElapsedMicroseconds());
+				process.AddFinishedSize(fileAttributes.size);
 			}
 			else
 			{
@@ -163,8 +160,6 @@ void BackupManager::VerifySnapshot(const Snapshot &snapshot, StatusTracker& trac
 			const Path& filePath = index->GetFile(i);
 			const FileAttributes& fileAttributes = index->GetFileAttributes(i);
 
-			Clock c;
-			c.Start();
 			//compute digest
 			UniquePointer<InputStream> input = index->OpenFileForReading(filePath);
 			UniquePointer<Crypto::HashFunction> hasher = Crypto::HashFunction::CreateInstance(Crypto::HashAlgorithm::MD5);
@@ -180,7 +175,7 @@ void BackupManager::VerifySnapshot(const Snapshot &snapshot, StatusTracker& trac
 				NOT_IMPLEMENTED_ERROR; //TODO: ERROR
 			}
 
-			process.AddFinishedSize(fileAttributes.size, c.GetElapsedMicroseconds());
+			process.AddFinishedSize(fileAttributes.size);
 			process.IncFinishedCount();
 		});
 	}
@@ -209,6 +204,8 @@ void BackupManager::WriteCompressionStatsFile(const Path &path, const Map<String
 void BackupManager::AddCompressionRateSample(const String &fileExtension, float32 compressionRate)
 {
 	AutoLock lock(this->compressionStatsLock);
+
+	compressionRate = Math::Clamp(compressionRate, 0.0f, 1.0f);
 
 	String extLower = fileExtension.ToLowercase();
 	this->compressionStats[extLower] = (this->compressionStats[extLower] + compressionRate) / 2.0f;

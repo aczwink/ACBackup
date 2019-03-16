@@ -31,7 +31,6 @@ public:
 		this->nFinishedFiles = 0;
 		this->nFiles = 0;
 		this->doneSize = 0;
-		this->duration_microsecs = 0;
 		this->totalSize = 0;
 	}
 
@@ -41,24 +40,25 @@ public:
 		this->isEndDeterminate = true;
 		this->nFinishedFiles = 0;
 		this->doneSize = 0;
-		this->duration_microsecs = 0;
+
+		this->clock.Start();
 	}
 
 	//Methods
 	CommonFileFormats::JSONValue ToJSON() const;
 
 	//Inline
-	inline void AddFinishedSize(uint64 size, uint64 us)
+	inline void AddFinishedSize(uint64 size)
 	{
 		AutoLock lock(this->mutex);
 		this->doneSize += size;
-		this->duration_microsecs += us;
 	}
 
 	inline void Finished()
 	{
 		AutoLock lock(this->mutex);
 		this->endTime = DateTime::Now();
+		this->totalTaskDuration = this->clock.GetElapsedMicroseconds();
 	}
 
 	inline void IncFileCount()
@@ -81,6 +81,7 @@ public:
 
 private:
 	//Members
+	Clock clock;
 	bool isEndDeterminate;
 	mutable Mutex mutex;
 	String title;
@@ -90,5 +91,5 @@ private:
 	uint64 doneSize;
 	DateTime startTime;
 	Optional<DateTime> endTime;
-	uint64 duration_microsecs;
+	uint64 totalTaskDuration;
 };

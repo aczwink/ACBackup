@@ -29,7 +29,9 @@ static void PrintManual()
 		   << u8"Backup a new snapshot into backup directory. Verifies the snapshot after backup." << endl
 		   << u8"Args: source directory" << endl
 		   << u8"Options:" << endl
-		   << u8"-l size\t>Limit in MiB for files that are compressed in memory rather than streamed. Defaults to 0 (i.e. never compress in memory)."
+		   << u8"-c level\tSet the compression level. A number between 0 to 9. Defaults to 3." << endl
+		   << u8"-no-c\tDisable compression."
+		   << u8"-l size\tLimit in MiB for files that are compressed in memory rather than streamed. Defaults to 0 (i.e. never compress in memory)."
 		   << endl
 
 		   << u8"command: init" << endl
@@ -58,13 +60,13 @@ static void PrintManual()
 		   << endl;
 };
 
-static int32 AddSnapshot(const Path& backupPath, const Path& sourcePath, uint64 limit)
+static int32 AddSnapshot(const Path& backupPath, const Path& sourcePath, int8 maxCompressionLevel, uint64 limit)
 {
 	BackupManager backupManager(backupPath);
 	StatusTracker tracker;
 
 	FileSystemIndex sourceIndex(sourcePath, tracker);
-	backupManager.AddSnapshot(sourceIndex, tracker, limit);
+	backupManager.AddSnapshot(sourceIndex, tracker, maxCompressionLevel, limit);
 
 	return EXIT_SUCCESS;
 }
@@ -88,9 +90,17 @@ static int32 Init(const Path& dirPath, bool encrypted)
 		return EXIT_FAILURE;
 	}
 
-	//generate files
-	BackupManager::WriteCompressionStatsFile(dirPath, {});
+	//generate compression stats file
+	//add known extensions that compress bad
+	const char* exts[] = {
+		u8"dmg"
+	};
+	Map<String, float32> stats;
+	for(const char* ext : exts)
+		stats.Insert(ext, 1);
+	BackupManager::WriteCompressionStatsFile(dirPath, stats);
 
+	//master key
 	if (encrypted)
 	{
 		//ask for master password
@@ -110,8 +120,8 @@ static int32 Init(const Path& dirPath, bool encrypted)
 
 		//write master key
 		Tuple<FixedArray<uint8>, FixedArray<uint8>> appKeyAndIV = DeriveAppKey();
-		FixedArray<uint8> appKey = appKeyAndIV.Get<0>();
-		FixedArray<uint8> appIV = appKeyAndIV.Get<1>();
+		FixedArray<uint8> appKey = Move(appKeyAndIV.Get<0>());
+		FixedArray<uint8> appIV = Move(appKeyAndIV.Get<1>());
 		FileOutputStream masterKeyFile(String(u8"master_key"));
 		Crypto::CBCCipher masterKeyCipher(CipherAlgorithm::AES, &appKey[0], appKey.GetNumberOfElements(), &appIV[0], masterKeyFile);
 
@@ -159,16 +169,10 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 	}
 
 	//TODO debugging
-	//Init(OSFileSystem::GetInstance().GetWorkingDirectory(), false);
-	//add-snapshot /Users/amir/Desktop -l 128
-	//add-snapshot /Users/amir/Downloads -l 128
-	//verify-snapshot snapshot_2019-03-14_22_22_52
+	Init(OSFileSystem::GetInstance().GetWorkingDirectory(), true);
+	//add-snapshot /Users/amir/Downloads -c 0 -l 128
+	//verify-snapshot snapshot_2019-03-16_18_51_10
 	//TODO end debugging
-
-	/*
-	 * LZMA stats: ca. 1 - 2 mb/s for compression
-	 * 17 mb/s uncompressing
-	 */
 
 	Path backupDir = OSFileSystem::GetInstance().GetWorkingDirectory();
 	const String& command = args[0];
@@ -180,19 +184,29 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 			return EXIT_FAILURE;
 		}
 
+		int8 maxCompressionLevel = 3;
 		uint64 memLimit = 0;
 		for(uint32 i = 2; i < args.GetNumberOfElements(); i++)
 		{
-			if(args[i] == u8"-l")
+			if(args[i] == u8"-c")
+			{
+				i++;
+				maxCompressionLevel = static_cast<int8>(args[i].ToUInt());
+			}
+			else if(args[i] == u8"-l")
 			{
 				i++;
 				memLimit = args[i].ToUInt();
+			}
+			else if(args[i] == u8"-no-c")
+			{
+				maxCompressionLevel = -1;
 			}
 		}
 
 		Path sourcePath = OSFileSystem::GetInstance().FromNativePath(args[1]);
 
-		return AddSnapshot(backupDir, sourcePath, memLimit);
+		return AddSnapshot(backupDir, sourcePath, maxCompressionLevel, memLimit);
 	}
 	else if(command == u8"init")
 	{

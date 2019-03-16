@@ -28,6 +28,12 @@ JSONValue ProcessStatus::ToJSON() const
 
 	AutoLock lock(this->mutex);
 
+	uint64 duration_microsecs;
+	if(this->endTime.HasValue())
+		duration_microsecs = this->totalTaskDuration;
+	else
+		duration_microsecs = this->clock.GetElapsedMicroseconds();
+
 	obj[u8"title"] = this->title;
 	obj[u8"nFinishedFiles"] = this->nFinishedFiles;
 	obj[u8"nFiles"] = this->nFiles;
@@ -42,6 +48,20 @@ JSONValue ProcessStatus::ToJSON() const
 
 	if(this->endTime.HasValue())
 		obj[u8"endTime"] = this->endTime->ToISOString();
+	else
+	{
+		if(this->isEndDeterminate && (duration_microsecs > 0))
+		{
+			uint64 leftSize = this->totalSize - this->doneSize;
+			float64 speed = this->doneSize / (duration_microsecs / 1000.0);
+
+			uint64 passed = duration_microsecs / 1000;
+			uint64 todo = static_cast<uint64>(leftSize / speed);
+			obj[u8"expectedEndTime"] = this->startTime.AddMilliSeconds(passed + todo).ToISOString();
+		}
+		else
+			obj[u8"expectedEndTime"] = u8"?";
+	}
 
 	return obj;
 }
