@@ -21,9 +21,6 @@
 //Namespaces
 using namespace StdXX::Crypto;
 
-const uint8 AES_KEY_SIZE = 32;
-const uint8 AES_BLOCK_SIZE = 16;
-
 Tuple<FixedArray<uint8>, FixedArray<uint8>> DeriveAppKey()
 {
 	String appPw = u8"W,W.n)zPy2f,Af77W#CdKTapY)[Y$K{Lhg,_cpMDF7V)4625{Lrsr?#ayX=e{X9]";
@@ -48,6 +45,28 @@ Tuple<FixedArray<uint8>, FixedArray<uint8>> DeriveAppKey()
 	return {Move(key), Move(iv)};
 }
 
+void DeriveFileKey(const EncryptionInfo& encryptionInfo, const String& fileName, uint8* key, uint8* iv)
+{
+	fileName.ToUTF8();
+
+	uint8 derived[AES_KEY_SIZE + AES_BLOCK_SIZE];
+	HKDF(&encryptionInfo.masterKey[0], static_cast<uint8>(encryptionInfo.masterKey.GetNumberOfElements()), &encryptionInfo.subKeySalt[0],
+		 static_cast<uint8>(encryptionInfo.subKeySalt.GetNumberOfElements()), fileName.GetRawData(),
+		 static_cast<uint8>(fileName.GetSize()), HashAlgorithm::SHA512, derived, AES_KEY_SIZE + AES_BLOCK_SIZE);
+
+	MemCopy(key, derived, AES_KEY_SIZE);
+	MemCopy(iv, &derived[AES_KEY_SIZE], AES_BLOCK_SIZE);
+}
+
+void DeriveFileDataKey(const EncryptionInfo &encryptionInfo, const String &fileName, uint8 *key)
+{
+	fileName.ToUTF8();
+
+	HKDF(&encryptionInfo.masterKey[0], static_cast<uint8>(encryptionInfo.masterKey.GetNumberOfElements()), &encryptionInfo.subKeySalt[0],
+		 static_cast<uint8>(encryptionInfo.subKeySalt.GetNumberOfElements()), fileName.GetRawData(),
+		 static_cast<uint8>(fileName.GetSize()), HashAlgorithm::SHA512, key, AES_KEY_SIZE);
+}
+
 FixedArray<uint8> DeriveMasterKey(const String& masterPassword, const uint8* salt, uint8 saltSize)
 {
 	masterPassword.ToUTF8(); //make sure it is utf8 encoded
@@ -62,9 +81,17 @@ FixedArray<uint8> DeriveMasterKey(const String& masterPassword, const uint8* sal
 
 	//generate master key
 	FixedArray<uint8> masterKey(AES_KEY_SIZE);
-	Crypto::scrypt(masterPassword, &saltAndPepper[0], saltAndPepper.GetNumberOfElements(), &masterKey[0], masterKey.GetNumberOfElements(), 20);
+	Crypto::scrypt(masterPassword, &saltAndPepper[0], saltAndPepper.GetNumberOfElements(), &masterKey[0], masterKey.GetNumberOfElements(), 10); //TODO: reset cost factor to 20
 
 	return masterKey;
+}
+
+void GenerateSafeRandomBytes(uint8* destination, uint8 nBytes)
+{
+	for(uint8 i = 0; i < nBytes; i++)
+	{
+		destination[i] = 0xAB; //TODO: add randomization
+	}
 }
 
 FixedArray<uint8> GenerateVerificationMessage()

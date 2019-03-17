@@ -25,13 +25,26 @@ struct FlatContainerFileAttributes : public FileAttributes
 	uint64 offset;
 	uint64 blockSize; //size of data after compression / encryption
 	bool isCompressed;
+	union
+	{
+		struct
+		{
+			uint8 nonce[12];
+			uint32 initialValue;
+		} small;
+		struct
+		{
+			uint8 nonce[8];
+			uint64 initialValue;
+		} big;
+	} encCounterValue;
 };
 
 class FlatContainerIndex : public BackupContainerIndex
 {
 public:
 	//Constructor
-	FlatContainerIndex(const Path& prefixPath);
+	FlatContainerIndex(const Path& prefixPath, const Optional<EncryptionInfo>& encryptionInfo);
 
 	//Methods
 	void AddPreviousFile(const Path &filePath, const FileIndex &index) override;
@@ -42,10 +55,10 @@ public:
 	uint32 GetNumberOfFiles() const override;
 	bool HasFileData(uint32 index) const override;
 	UniquePointer<InputStream> OpenFileForReading(const Path &fileEntry) const override;
-	void Serialize() const override;
+	void Serialize(const Optional<EncryptionInfo>& encryptionInfo) const override;
 
 	//Functions
-	static Snapshot Deserialize(const Path& path);
+	static Snapshot Deserialize(const Path& path, const Optional<EncryptionInfo>& encryptionInfo);
 
 	//Inline
 	inline const FlatContainerFileAttributes& GetSpecificFileAttributes(uint32 index) const
@@ -55,6 +68,8 @@ public:
 
 private:
 	//Members
+	bool isEncrypted;
+	DynamicArray<uint8> encryptionKey;
 	Mutex fileHeaderLock;
 	BijectiveMap<Path, uint32> fileEntries;
 	DynamicArray<FlatContainerFileAttributes> fileAttributes;
@@ -69,7 +84,7 @@ private:
 	} writing;
 
 	//Methods
-	void ReadIndexFile();
+	void ReadIndexFile(const Optional<EncryptionInfo>& encryptionInfo);
 
 	//Inline
 	inline Path GetDataPath() const

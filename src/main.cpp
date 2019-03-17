@@ -107,37 +107,47 @@ static int32 Init(const Path& dirPath, bool encrypted)
 		String pw = u8"test"; //TODO: add enter password
 
 		//generate 64 bytes of random salt
-		constexpr uint8 saltSize = 64;
-		uint8 salt[saltSize];
-
-		for(uint8 i = 0; i < saltSize; i++)
-		{
-			salt[i] = 0xAB; //TODO: add randomization
-		}
+		uint8 salt[c_masterKey_saltSize];
+		GenerateSafeRandomBytes(salt, c_masterKey_saltSize);
 
 		//... and master key
-		FixedArray<uint8> masterKey = DeriveMasterKey(pw, salt, saltSize);
+		FixedArray<uint8> masterKey = DeriveMasterKey(pw, salt, c_masterKey_saltSize);
+
+		//... and salt for sub key derivation
+		uint8 subKeySalt[c_subKeyDerive_saltSize];
+		GenerateSafeRandomBytes(subKeySalt, c_subKeyDerive_saltSize);
+
+		//... and an iv for verification
+		uint8 verifyIV[AES_BLOCK_SIZE];
+		GenerateSafeRandomBytes(verifyIV, AES_BLOCK_SIZE);
 
 		//write master key
 		Tuple<FixedArray<uint8>, FixedArray<uint8>> appKeyAndIV = DeriveAppKey();
 		FixedArray<uint8> appKey = Move(appKeyAndIV.Get<0>());
 		FixedArray<uint8> appIV = Move(appKeyAndIV.Get<1>());
+
 		FileOutputStream masterKeyFile(String(u8"master_key"));
-		Crypto::CBCCipher masterKeyCipher(CipherAlgorithm::AES, &appKey[0], appKey.GetNumberOfElements(), &appIV[0], masterKeyFile);
 
-		masterKeyCipher.WriteBytes(salt, saltSize); //we don't actually write the key but the salt, that is required to generate the key
-		FixedArray<uint8> verificationMsg = GenerateVerificationMessage();
+		//we write the master key salt encrypted with the app key
+		Crypto::CBCCipher appKeyCipher(CipherAlgorithm::AES, &appKey[0], appKey.GetNumberOfElements(), &appIV[0], masterKeyFile);
 
-		uint8 len = static_cast<uint8>(verificationMsg.GetNumberOfElements());
+		appKeyCipher.WriteBytes(&c_masterKey_saltSize, 1);
+		appKeyCipher.WriteBytes(salt, c_masterKey_saltSize); //we don't actually write the key but the salt, that is required to generate the key
+		appKeyCipher.WriteBytes(verifyIV, AES_BLOCK_SIZE);
+		appKeyCipher.Finalize();
+
+		//write subkey salt, generate verification message, encrypt it with master key (and NOT with app key) and write it to file
+		Crypto::CBCCipher masterKeyCipher(CipherAlgorithm::AES, &masterKey[0], masterKey.GetNumberOfElements(), verifyIV, masterKeyFile);
+
+		uint8 len = c_subKeyDerive_saltSize;
 		masterKeyCipher.WriteBytes(&len, 1);
+		masterKeyCipher.WriteBytes(subKeySalt, c_subKeyDerive_saltSize);
 
+		FixedArray<uint8> verificationMsg = GenerateVerificationMessage();
+		len = static_cast<uint8>(verificationMsg.GetNumberOfElements());
+		masterKeyCipher.WriteBytes(&len, 1);
 		masterKeyCipher.WriteBytes(&verificationMsg[0], verificationMsg.GetNumberOfElements());
-
-		masterKeyCipher.Flush();
-
-		//TODO: if when decrypting verificationMsgSize is odd, fail
-		//TODO: if when decrypting sha256(verificationMsg) = readverificationmessagesha then ok else false
-		//TODO: all snapshot keys are derived by master key with their "snapshot_2019-02-22_19_59_01" name. figure out what is smart
+		masterKeyCipher.Finalize();
 	}
 
 	return EXIT_SUCCESS;
@@ -170,8 +180,8 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 
 	//TODO debugging
 	Init(OSFileSystem::GetInstance().GetWorkingDirectory(), true);
-	//add-snapshot /Users/amir/Downloads -c 0 -l 128
-	//verify-snapshot snapshot_2019-03-16_18_51_10
+	//add-snapshot /Users/amir/Downloads -l 128
+	//verify-snapshot snapshot_2019-03-17_20_25_10
 	//TODO end debugging
 
 	Path backupDir = OSFileSystem::GetInstance().GetWorkingDirectory();

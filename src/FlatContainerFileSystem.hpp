@@ -34,8 +34,6 @@ public:
 			header.offset = attributes.offset;
 			header.uncompressedSize = attributes.size;
 			header.compressedSize = attributes.blockSize;
-			if(attributes.isCompressed)
-				header.compression = CompressionAlgorithm::LZMA;
 
 			this->AddSourceFile(index.GetFile(i), header);
 		}

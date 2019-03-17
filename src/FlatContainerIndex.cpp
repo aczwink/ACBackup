@@ -22,12 +22,19 @@
 #include "FlatContainerFileSystem.hpp"
 
 //Constructor
-FlatContainerIndex::FlatContainerIndex(const Path &prefixPath) : BackupContainerIndex(prefixPath)
+FlatContainerIndex::FlatContainerIndex(const Path &prefixPath, const Optional<EncryptionInfo>& encryptionInfo) : BackupContainerIndex(prefixPath)
 {
+	this->isEncrypted = encryptionInfo.HasValue();
+	if(this->isEncrypted)
+	{
+		this->encryptionKey.Resize(AES_KEY_SIZE);
+		DeriveFileDataKey(*encryptionInfo, this->GetDataPath().GetName(), &this->encryptionKey[0]);
+	}
+
 	if(OSFileSystem::GetInstance().Exists(this->GetIndexPath()))
 	{
 		//open in read mode
-		this->ReadIndexFile();
+		this->ReadIndexFile(encryptionInfo);
 		this->reading.dataContainer = new FlatContainerFileSystem(*this, this->GetDataPath());
 	}
 	else
@@ -65,6 +72,27 @@ float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileIndex& in
 	MemCopy(backupEntry.digest, fileAttributes.digest, sizeof(fileAttributes.digest));
 	backupEntry.size = fileAttributes.size;
 
+	//generate counter value
+	UniquePointer<Crypto::Counter> counter;
+	UniquePointer<Crypto::CTRCipher> cipher;
+	if(this->isEncrypted)
+	{
+		if(fileAttributes.size >= Unsigned<uint32>::Max())
+		{
+			GenerateSafeRandomBytes(backupEntry.encCounterValue.big.nonce, sizeof(backupEntry.encCounterValue.big.nonce));
+			GenerateSafeRandomBytes(reinterpret_cast<uint8 *>(&backupEntry.encCounterValue.big.initialValue), sizeof(backupEntry.encCounterValue.big.initialValue));
+
+			counter = new Crypto::DefaultCounter<8, uint64>(backupEntry.encCounterValue.big.nonce, backupEntry.encCounterValue.big.initialValue);
+		}
+		else
+		{
+			GenerateSafeRandomBytes(backupEntry.encCounterValue.small.nonce, sizeof(backupEntry.encCounterValue.small.nonce));
+			GenerateSafeRandomBytes(reinterpret_cast<uint8 *>(&backupEntry.encCounterValue.small.initialValue), sizeof(backupEntry.encCounterValue.small.initialValue));
+
+			counter = new Crypto::DefaultCounter<12, uint32>(backupEntry.encCounterValue.small.nonce, backupEntry.encCounterValue.small.initialValue);
+		}
+	}
+
 	//compute compression level
 	float32 c = (maxCompressionLevel+1) * (1 - compressionRate);
 	uint8 compressionLevel = static_cast<uint8>(round(c));
@@ -76,7 +104,7 @@ float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileIndex& in
 	stdOut << backupEntry.isCompressed << u8": " << compressionRate << u8" -> " << compressionLevel << endl;
 	m.Unlock();*/
 
-	bool filter = backupEntry.isCompressed; //TODO: or encrypt
+	bool filter = backupEntry.isCompressed or this->isEncrypted;
 	if((fileAttributes.size < memLimit) && filter)
 	{
 		FIFOBuffer buffer;
@@ -84,17 +112,26 @@ float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileIndex& in
 
 		//filter data first
 		OutputStream* sink = &buffer;
-		UniquePointer<Compressor> compressor;
 
-		UniquePointer<InputStream> fileInputStream = index.OpenFileForReading(filePath);
+		if(this->isEncrypted)
+		{
+			cipher = new Crypto::CTRCipher(CipherAlgorithm::AES, &this->encryptionKey[0],
+										   static_cast<uint16>(this->encryptionKey.GetNumberOfElements()), *counter, *sink);
+			sink = cipher.operator->();
+		}
+
+		UniquePointer<Compressor> compressor;
 		if(backupEntry.isCompressed)
 		{
 			compressor = Compressor::Create(CompressionAlgorithm::LZMA, *sink, compressionLevel);
 			sink = compressor.operator->();
 		}
 
+		UniquePointer<InputStream> fileInputStream = index.OpenFileForReading(filePath);
 		fileInputStream->FlushTo(*sink);
 		sink->Flush();
+		if(backupEntry.isCompressed)
+			compressor->Finalize();
 
 		//now write
 		AutoLock lock(this->writing.writeLock);
@@ -110,18 +147,28 @@ float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileIndex& in
 		backupEntry.offset = this->writing.dataFile->GetCurrentOffset();
 
 		//stream data
-		OutputStream* sink = this->writing.dataFile.operator->();
-		UniquePointer<Compressor> compressor;
+		BufferedOutputStream bufferedOutputStream(*this->writing.dataFile.operator->());
+		OutputStream* sink = &bufferedOutputStream;
 
-		UniquePointer<InputStream> fileInputStream = index.OpenFileForReading(filePath);
+		if(this->isEncrypted)
+		{
+			cipher = new Crypto::CTRCipher(CipherAlgorithm::AES, &this->encryptionKey[0],
+										   static_cast<uint16>(this->encryptionKey.GetNumberOfElements()), *counter, *sink);
+			sink = cipher.operator->();
+		}
+
+		UniquePointer<Compressor> compressor;
 		if(backupEntry.isCompressed)
 		{
-			compressor = Compressor::Create(CompressionAlgorithm::LZMA, *this->writing.dataFile, compressionLevel);
+			compressor = Compressor::Create(CompressionAlgorithm::LZMA, *sink, compressionLevel);
 			sink = compressor.operator->();
 		}
 
+		UniquePointer<InputStream> fileInputStream = index.OpenFileForReading(filePath);
 		fileInputStream->FlushTo(*sink);
 		sink->Flush();
+		if(backupEntry.isCompressed)
+			compressor->Finalize();
 
 		backupEntry.blockSize = this->writing.dataFile->GetCurrentOffset() - backupEntry.offset;
 	}
@@ -166,10 +213,36 @@ bool FlatContainerIndex::HasFileData(uint32 index) const
 UniquePointer<InputStream> FlatContainerIndex::OpenFileForReading(const Path& filePath) const
 {
 	AutoPointer<const File> file = this->reading.dataContainer->GetFile(filePath);
-	return file->OpenForReading();
+
+	UniquePointer<InputStream> stream = file->OpenForReading();
+	ChainedInputStream* chain = new ChainedInputStream(Move(stream));
+
+	chain->Add( new BufferedInputStream(chain->GetEnd()) );
+
+	uint32 index = this->fileEntries.Get(filePath);
+	const FlatContainerFileAttributes& backupEntry = this->fileAttributes[index];
+
+	if(this->isEncrypted)
+	{
+		UniquePointer<Crypto::Counter> counter;
+		if(backupEntry.size >= Unsigned<uint32>::Max())
+			counter = new Crypto::DefaultCounter<8, uint64>(backupEntry.encCounterValue.big.nonce, backupEntry.encCounterValue.big.initialValue);
+		else
+			counter = new Crypto::DefaultCounter<12, uint32>(backupEntry.encCounterValue.small.nonce, backupEntry.encCounterValue.small.initialValue);
+
+		Crypto::Counter* ownedCtr = chain->AddCounter(Move(counter));
+		chain->Add( new Crypto::CTRDecipher(CipherAlgorithm::AES, &this->encryptionKey[0], static_cast<uint16>(this->encryptionKey.GetNumberOfElements()), *ownedCtr, chain->GetEnd()) );
+	}
+
+	if(backupEntry.isCompressed)
+	{
+		chain->Add( Decompressor::Create(CompressionAlgorithm::LZMA, chain->GetEnd()) );
+	}
+
+	return chain;
 }
 
-void FlatContainerIndex::Serialize() const
+void FlatContainerIndex::Serialize(const Optional<EncryptionInfo>& encryptionInfo) const
 {
 	FileOutputStream fileOutputStream(this->GetIndexPath(), true); //overwrite old
 
@@ -185,8 +258,20 @@ void FlatContainerIndex::Serialize() const
 	}
 
 	//file entries
-	Crypto::HashingOutputStream hashingOutputStream(fileOutputStream, Crypto::HashAlgorithm::SHA256);
+	OutputStream* target = &fileOutputStream;
+	UniquePointer<Crypto::CBCCipher> cipher;
+	if(encryptionInfo.HasValue())
+	{
+		uint8 key[AES_KEY_SIZE];
+		uint8 iv[AES_BLOCK_SIZE];
+
+		DeriveFileKey(*encryptionInfo, this->GetIndexPath().GetName(), key, iv);
+		cipher = new Crypto::CBCCipher(CipherAlgorithm::AES, key, AES_KEY_SIZE, iv, *target);
+		target = cipher.operator->();
+	}
+	Crypto::HashingOutputStream hashingOutputStream(*target, Crypto::HashAlgorithm::SHA256);
 	BufferedOutputStream bufferedOutputStream(hashingOutputStream);
+
 	DataWriter dataWriter(true, bufferedOutputStream);
 	TextWriter textWriter(bufferedOutputStream, TextCodecType::UTF8);
 
@@ -197,12 +282,27 @@ void FlatContainerIndex::Serialize() const
 
 		textWriter.WriteStringZeroTerminated(fileEntry.key.GetString());
 		dataWriter.WriteUInt64(attributes.size);
-		bufferedOutputStream.WriteBytes(attributes.digest, sizeof(attributes.digest));
+		dataWriter.WriteBytes(attributes.digest, sizeof(attributes.digest));
 		dataWriter.WriteUInt64(attributes.offset);
 		dataWriter.WriteUInt64(attributes.blockSize);
 		dataWriter.WriteByte(static_cast<byte>(attributes.isCompressed));
+		if(this->isEncrypted)
+		{
+			if(attributes.size >= Unsigned<uint32>::Max())
+			{
+				dataWriter.WriteBytes(attributes.encCounterValue.big.nonce, sizeof(attributes.encCounterValue.big.nonce));
+				dataWriter.WriteUInt64(attributes.encCounterValue.big.initialValue);
+			}
+			else
+			{
+				dataWriter.WriteBytes(attributes.encCounterValue.small.nonce, sizeof(attributes.encCounterValue.small.nonce));
+				dataWriter.WriteUInt32(attributes.encCounterValue.small.initialValue);
+			}
+		}
 	}
 	bufferedOutputStream.Flush();
+	if(!cipher.IsNull())
+		cipher->Finalize();
 
 	UniquePointer<Crypto::HashFunction> hasher = hashingOutputStream.Reset();
 	hasher->Finish();
@@ -211,24 +311,38 @@ void FlatContainerIndex::Serialize() const
 }
 
 //Class functions
-Snapshot FlatContainerIndex::Deserialize(const Path &path)
+Snapshot FlatContainerIndex::Deserialize(const Path &path, const Optional<EncryptionInfo>& encryptionInfo)
 {
 	Path prefixPath = path.GetParent() / path.GetTitle();
-	FlatContainerIndex* idx = new FlatContainerIndex(prefixPath);
+	FlatContainerIndex* idx = new FlatContainerIndex(prefixPath, encryptionInfo);
 
 	return { path.GetTitle(), idx };
 }
 
 //Private methods
-void FlatContainerIndex::ReadIndexFile()
+void FlatContainerIndex::ReadIndexFile(const Optional<EncryptionInfo>& encryptionInfo)
 {
 	FileInputStream indexFile(this->GetIndexPath());
 	indexFile.Skip(16); //skip header
 
 	//read file entries
 	LimitedInputStream limitedInputStream(indexFile, indexFile.GetRemainingBytes() - 32); //read all but the sha256 digest at the end
-	Crypto::HashingInputStream hashingInputStream(limitedInputStream, Crypto::HashAlgorithm::SHA256);
+
+	InputStream* source = &limitedInputStream;
+	UniquePointer<Crypto::CBCDecipher> decipher;
+	if(encryptionInfo.HasValue())
+	{
+		uint8 key[AES_KEY_SIZE];
+		uint8 iv[AES_BLOCK_SIZE];
+
+		DeriveFileKey(*encryptionInfo, this->GetIndexPath().GetName(), key, iv);
+		decipher = new Crypto::CBCDecipher(CipherAlgorithm::AES, key, AES_KEY_SIZE, iv, *source);
+		source = decipher.operator->();
+	}
+
+	Crypto::HashingInputStream hashingInputStream(*source, Crypto::HashAlgorithm::SHA256);
 	BufferedInputStream bufferedInputStream(hashingInputStream);
+
 	DataReader dataReader(true, bufferedInputStream);
 	TextReader textReader(bufferedInputStream, TextCodecType::UTF8);
 
@@ -239,10 +353,23 @@ void FlatContainerIndex::ReadIndexFile()
 
 		FlatContainerFileAttributes fileEntry;
 		fileEntry.size = dataReader.ReadUInt64();
-		bufferedInputStream.ReadBytes(fileEntry.digest, sizeof(fileEntry.digest));
+		dataReader.ReadBytes(fileEntry.digest, sizeof(fileEntry.digest));
 		fileEntry.offset = dataReader.ReadUInt64();
 		fileEntry.blockSize = dataReader.ReadUInt64();
 		fileEntry.isCompressed = dataReader.ReadByte() != 0;
+		if(this->isEncrypted)
+		{
+			if(fileEntry.size >= Unsigned<uint32>::Max())
+			{
+				dataReader.ReadBytes(fileEntry.encCounterValue.big.nonce, sizeof(fileEntry.encCounterValue.big.nonce));
+				fileEntry.encCounterValue.big.initialValue = dataReader.ReadUInt64();
+			}
+			else
+			{
+				dataReader.ReadBytes(fileEntry.encCounterValue.small.nonce, sizeof(fileEntry.encCounterValue.small.nonce));
+				fileEntry.encCounterValue.small.initialValue = dataReader.ReadUInt32();
+			}
+		}
 
 		uint32 attrIndex = this->fileAttributes.Push(Move(fileEntry));
 		this->fileEntries.Insert(Move(filePath), attrIndex);

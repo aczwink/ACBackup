@@ -20,12 +20,69 @@
 #include "BackupManager.hpp"
 //Local
 #include "FlatContainerIndex.hpp"
+#include "KeyDerivation.hpp"
 
 const char* c_comprStatsFileName = u8"compression_stats.csv";
 
 //Constructor
 BackupManager::BackupManager(const Path &path) : backupPath(path)
 {
+	//check for master_key
+	Path masterKeyPath = this->backupPath / String(u8"master_key");
+	if(OSFileSystem::GetInstance().Exists(masterKeyPath))
+	{
+		String pw = u8"test"; //TODO: ask for pw
+
+		Tuple<FixedArray<uint8>, FixedArray<uint8>> appKeyAndIV = DeriveAppKey();
+		FixedArray<uint8> appKey = Move(appKeyAndIV.Get<0>());
+		FixedArray<uint8> appIV = Move(appKeyAndIV.Get<1>());
+
+		FileInputStream fileInputStream(masterKeyPath);
+		Crypto::CBCDecipher appKeyDecipher(CipherAlgorithm::AES, &appKey[0], static_cast<uint16>(appKey.GetNumberOfElements()), &appIV[0], fileInputStream);
+
+		uint8 masterKeySaltLen;
+		appKeyDecipher.ReadBytes(&masterKeySaltLen, 1);
+		FixedArray<uint8> masterKeySalt(masterKeySaltLen);
+		appKeyDecipher.ReadBytes(&masterKeySalt[0], masterKeySaltLen);
+
+		uint8 verifyIV[AES_BLOCK_SIZE];
+		appKeyDecipher.ReadBytes(verifyIV, AES_BLOCK_SIZE);
+
+		//generate master key and read verification message
+		FixedArray<uint8> masterKey = DeriveMasterKey(pw, &masterKeySalt[0], masterKeySaltLen);
+		Crypto::CBCDecipher masterKeyDecipher(CipherAlgorithm::AES, &masterKey[0], static_cast<uint16>(masterKey.GetNumberOfElements()), verifyIV, fileInputStream);
+
+		uint8 len;
+		masterKeyDecipher.ReadBytes(&len, 1);
+		FixedArray<uint8> subKeyDeriveSalt(len);
+		masterKeyDecipher.ReadBytes(&subKeyDeriveSalt[0], len);
+
+		uint8 verificationMsgLen;
+		masterKeyDecipher.ReadBytes(&verificationMsgLen, 1);
+
+		FixedArray<uint8> verificationMessage(verificationMsgLen);
+		uint32 nBytesRead = masterKeyDecipher.ReadBytes(&verificationMessage[0], verificationMsgLen);
+		if(nBytesRead != verificationMsgLen)
+		{
+			NOT_IMPLEMENTED_ERROR; //TODO: wrong pw
+		}
+
+		//generate sha of verification message
+		UniquePointer<Crypto::HashFunction> hasher = Crypto::HashFunction::CreateInstance(Crypto::HashAlgorithm::SHA256);
+		hasher->Update(&verificationMessage[0], verificationMessage.GetNumberOfElements() - hasher->GetDigestSize());
+		hasher->Finish();
+		FixedArray<uint8> computedVerificationHash = hasher->GetDigest();
+
+		bool ok = MemCmp(&computedVerificationHash[0], &verificationMessage[verificationMessage.GetNumberOfElements() - hasher->GetDigestSize()], hasher->GetDigestSize()) == 0;
+		if(!ok)
+		{
+			NOT_IMPLEMENTED_ERROR; //TODO: wrong pw
+		}
+
+		EncryptionInfo encInfo = {Move(masterKey), Move(subKeyDeriveSalt)};
+		this->encryptionInfo = Move(encInfo);
+	}
+
 	this->ReadInSnapshots();
 
 	//read in compression stats
@@ -76,7 +133,7 @@ void BackupManager::AddSnapshot(const FileIndex &index, StatusTracker& tracker, 
 	if(!this->snapshots.IsEmpty())
 		prevSnapshot = this->snapshots.Last().index;
 
-	UniquePointer<FlatContainerIndex> snapshot = new FlatContainerIndex(this->backupPath / snapshotName);
+	UniquePointer<FlatContainerIndex> snapshot = new FlatContainerIndex(this->backupPath / snapshotName, this->encryptionInfo);
 	ProcessStatus& process = tracker.AddProcessStatusTracker(u8"Creating snapshot: " + snapshotName, index.GetNumberOfFiles(), totalSize);
 	for(uint32 i = 0; i < index.GetNumberOfFiles(); i++)
 	{
@@ -123,7 +180,7 @@ void BackupManager::AddSnapshot(const FileIndex &index, StatusTracker& tracker, 
 	this->threadPool.WaitForAllTasksToComplete();
 	process.Finished();
 
-	snapshot->Serialize();
+	snapshot->Serialize(this->encryptionInfo);
 
 	//close snapshot and read it in again
 	snapshot = nullptr;
@@ -248,7 +305,7 @@ void BackupManager::ReadInSnapshots()
 	for(const Path& ssfile : snapshotFiles)
 	{
 		//try to deserialize
-		Snapshot snapshot = BackupContainerIndex::Deserialize(this->backupPath / ssfile);
+		Snapshot snapshot = BackupContainerIndex::Deserialize(this->backupPath / ssfile, this->encryptionInfo);
 		if(snapshot.index)
 		{
 			this->snapshots.Push(snapshot);

@@ -56,6 +56,7 @@ private:
 	DynamicArray<Snapshot> snapshots;
 	Map<String, float32> compressionStats;
 	Mutex compressionStatsLock;
+	Optional<EncryptionInfo> encryptionInfo;
 	mutable StaticThreadPool threadPool;
 
 	//Methods

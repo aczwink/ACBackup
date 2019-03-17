@@ -21,7 +21,7 @@
 #include "FlatContainerIndex.hpp"
 
 //Class functions
-Snapshot BackupContainerIndex::Deserialize(const Path &path)
+Snapshot BackupContainerIndex::Deserialize(const Path &path, const Optional<EncryptionInfo>& encryptionInfo)
 {
 	if(path.GetFileExtension() == u8"index")
 	{
@@ -35,6 +35,7 @@ Snapshot BackupContainerIndex::Deserialize(const Path &path)
 		IndexType indexType = IndexType::Unknown;
 		{
 			FileInputStream fileInputStream(path);
+
 			byte signature[8];
 			fileInputStream.ReadBytes(signature, sizeof(signature));
 
@@ -59,7 +60,7 @@ Snapshot BackupContainerIndex::Deserialize(const Path &path)
 		switch(indexType)
 		{
 			case IndexType::Flat:
-				return FlatContainerIndex::Deserialize(path);
+				return FlatContainerIndex::Deserialize(path, encryptionInfo);
 			case IndexType::Unknown:
 				break;
 		}

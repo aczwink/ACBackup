@@ -19,6 +19,7 @@
 #pragma once
 //Local
 #include "FileIndex.hpp"
+#include "KeyDerivation.hpp"
 
 //Forward declarations
 class BackupContainerIndex;
@@ -41,10 +42,10 @@ public:
 	virtual void AddPreviousFile(const Path& filePath, const FileIndex& index) = 0;
 	virtual float32 BackupFile(const Path& filePath, const FileIndex& index, float32 compressionRate, int8 maxCompressionLevel, uint64 memLimit) = 0;
 	virtual bool HasFileData(uint32 index) const = 0;
-	virtual void Serialize() const = 0;
+	virtual void Serialize(const Optional<EncryptionInfo>& encryptionInfo) const = 0;
 
 	//Functions
-	static Snapshot Deserialize(const Path &path);
+	static Snapshot Deserialize(const Path &path, const Optional<EncryptionInfo>& encryptionInfo);
 
 protected:
 	//Inline
