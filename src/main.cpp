@@ -104,7 +104,17 @@ static int32 Init(const Path& dirPath, bool encrypted)
 	if (encrypted)
 	{
 		//ask for master password
-		String pw = u8"test"; //TODO: add enter password
+		stdOut << u8"Enter password: ";
+		String pw = stdIn.ReadUnechoedLine();
+
+		stdOut << u8"Enter password again: ";
+		String confirmation = stdIn.ReadUnechoedLine();
+
+		if(pw != confirmation)
+		{
+			stdErr << u8"Passwords do not match!" << endl;
+			return EXIT_FAILURE;
+		}
 
 		//generate 64 bytes of random salt
 		uint8 salt[c_masterKey_saltSize];

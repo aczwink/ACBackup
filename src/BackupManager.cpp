@@ -31,7 +31,9 @@ BackupManager::BackupManager(const Path &path) : backupPath(path)
 	Path masterKeyPath = this->backupPath / String(u8"master_key");
 	if(OSFileSystem::GetInstance().Exists(masterKeyPath))
 	{
-		String pw = u8"test"; //TODO: ask for pw
+		//ask for master password
+		stdOut << u8"Enter password: ";
+		String pw = stdIn.ReadUnechoedLine();
 
 		Tuple<FixedArray<uint8>, FixedArray<uint8>> appKeyAndIV = DeriveAppKey();
 		FixedArray<uint8> appKey = Move(appKeyAndIV.Get<0>());
