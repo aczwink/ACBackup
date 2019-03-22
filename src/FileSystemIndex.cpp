@@ -18,6 +18,7 @@
  */
 //Class header
 #include "FileSystemIndex.hpp"
+#include "IndexingReadException.hpp"
 
 //Constructor
 FileSystemIndex::FileSystemIndex(const Path &path, StatusTracker& tracker) : basePath(path)
@@ -45,10 +46,14 @@ FileSystemIndex::FileSystemIndex(const Path &path, StatusTracker& tracker) : bas
 	findStatus.Finished();
 
 	//compute attributes
+	Atomic<bool> failed;
 	ProcessStatus& attrStatus = tracker.AddProcessStatusTracker(u8"Computing hashes", this->fileAttributes.GetNumberOfElements(), totalSize);
 	for(uint32 i = 0; i < this->fileAttributes.GetNumberOfElements(); i++)
 	{
-		this->threadPool.EnqueueTask([this, i, &path, &attrStatus](){
+		this->threadPool.EnqueueTask([this, i, &path, &attrStatus, &failed](){
+			if(*failed)
+				return;
+
 			Path filePath = path / this->pathMap.GetReverse(i);
 			AutoPointer<const File> file = OSFileSystem::GetInstance().GetFile(filePath);
 
@@ -60,7 +65,7 @@ FileSystemIndex::FileSystemIndex(const Path &path, StatusTracker& tracker) : bas
 
 			FileAttributes& attrs = this->fileAttributes[i];
 			if(hashedSize != attrs.size)
-				NOT_IMPLEMENTED_ERROR; //TODO: implement me
+				failed = true;
 
 			hasher->StoreDigest(attrs.digest);
 
@@ -69,6 +74,10 @@ FileSystemIndex::FileSystemIndex(const Path &path, StatusTracker& tracker) : bas
 		});
 	}
 	this->threadPool.WaitForAllTasksToComplete();
+
+	if(*failed)
+		throw IndexingReadException();
+
 	attrStatus.Finished();
 }
 

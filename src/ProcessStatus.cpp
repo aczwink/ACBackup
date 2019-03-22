@@ -56,8 +56,8 @@ JSONValue ProcessStatus::ToJSON() const
 			float64 speed = this->doneSize / (duration_microsecs / 1000.0);
 
 			uint64 passed = duration_microsecs / 1000;
-			uint64 todo = static_cast<uint64>(leftSize / speed);
-			obj[u8"expectedEndTime"] = this->startTime.AddMilliSeconds(passed + todo).ToISOString();
+			uint64 leftTime = static_cast<uint64>(leftSize / speed);
+			obj[u8"expectedEndTime"] = this->startTime.AddMilliSeconds(passed + leftTime).ToISOString();
 		}
 		else
 			obj[u8"expectedEndTime"] = u8"?";

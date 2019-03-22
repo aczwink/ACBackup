@@ -16,11 +16,15 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Class header
-#include "FlatContainerFileSystem.hpp"
+#include <Std++.hpp>
+using namespace StdXX;
 
-//Public methods
-void FlatContainerFileSystem::Flush()
+class KeyVerificationFailedException : public Exception
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me. though currently not needed, since the file system is used read only
-}
+public:
+	//Methods
+	String GetDescription() const override
+	{
+		return u8"Key verification failed. Password is wrong.";
+	}
+};

@@ -21,6 +21,7 @@
 //Local
 #include "FlatContainerIndex.hpp"
 #include "KeyDerivation.hpp"
+#include "KeyVerificationFailedException.hpp"
 
 const char* c_comprStatsFileName = u8"compression_stats.csv";
 
@@ -65,9 +66,7 @@ BackupManager::BackupManager(const Path &path) : backupPath(path)
 		FixedArray<uint8> verificationMessage(verificationMsgLen);
 		uint32 nBytesRead = masterKeyDecipher.ReadBytes(&verificationMessage[0], verificationMsgLen);
 		if(nBytesRead != verificationMsgLen)
-		{
-			NOT_IMPLEMENTED_ERROR; //TODO: wrong pw
-		}
+			throw KeyVerificationFailedException();
 
 		//generate sha of verification message
 		UniquePointer<Crypto::HashFunction> hasher = Crypto::HashFunction::CreateInstance(Crypto::HashAlgorithm::SHA256);
@@ -77,9 +76,7 @@ BackupManager::BackupManager(const Path &path) : backupPath(path)
 
 		bool ok = MemCmp(&computedVerificationHash[0], &verificationMessage[verificationMessage.GetNumberOfElements() - hasher->GetDigestSize()], hasher->GetDigestSize()) == 0;
 		if(!ok)
-		{
-			NOT_IMPLEMENTED_ERROR; //TODO: wrong pw
-		}
+			throw KeyVerificationFailedException();
 
 		EncryptionInfo encInfo = {Move(masterKey), Move(subKeyDeriveSalt)};
 		this->encryptionInfo = Move(encInfo);
@@ -198,29 +195,32 @@ void BackupManager::VerifySnapshot(const Snapshot &snapshot, StatusTracker& trac
 	BackupContainerIndex* index = snapshot.index;
 
 	//compute total size
-	uint32 nFilesToCheck = 0;
 	uint64 totalSize = 0;
 	for(uint32 i = 0; i < index->GetNumberOfFiles(); i++)
 	{
-		if(!index->HasFileData(i))
-			continue; //file data is in a previous snapshot
-		nFilesToCheck++;
 		totalSize += index->GetFileAttributes(i).size;
 	}
 
-	ProcessStatus& process = tracker.AddProcessStatusTracker(u8"Verifying snapshot: " + snapshot.creationText, nFilesToCheck, totalSize);
+	DynamicArray<uint32> failedFiles;
+	Mutex failedFilesLock;
 
+	ProcessStatus& process = tracker.AddProcessStatusTracker(u8"Verifying snapshot: " + snapshot.creationText, index->GetNumberOfFiles(), totalSize);
 	for(uint32 i = 0; i < index->GetNumberOfFiles(); i++)
 	{
-		if(!index->HasFileData(i))
-			continue; //file data is in a previous snapshot
-
-		this->threadPool.EnqueueTask([&index, i, &process](){
-			const Path& filePath = index->GetFile(i);
-			const FileAttributes& fileAttributes = index->GetFileAttributes(i);
+		this->threadPool.EnqueueTask([&snapshot, i, &process, &failedFiles, &failedFilesLock](){
+			//find data first
+			uint32 fileIndex = i;
+			const Path& filePath = snapshot.index->GetFile(i);
+			const Snapshot* dataSnapshot = &snapshot;
+			while(!dataSnapshot->index->HasFileData(fileIndex))
+			{
+				dataSnapshot = dataSnapshot->prev;
+				fileIndex = dataSnapshot->index->FindFileIndex(filePath);
+			}
+			BackupContainerIndex* dataIndex = dataSnapshot->index;
 
 			//compute digest
-			UniquePointer<InputStream> input = index->OpenFileForReading(filePath);
+			UniquePointer<InputStream> input = dataIndex->OpenFileForReading(filePath);
 			UniquePointer<Crypto::HashFunction> hasher = Crypto::HashFunction::CreateInstance(Crypto::HashAlgorithm::MD5);
 			uint64 readSize = hasher->Update(*input);
 
@@ -229,9 +229,13 @@ void BackupManager::VerifySnapshot(const Snapshot &snapshot, StatusTracker& trac
 			hasher->StoreDigest(computedDigest);
 
 			//checks
+			const FileAttributes& fileAttributes = dataIndex->GetFileAttributes(i);
 			if((readSize != fileAttributes.size) || (MemCmp(computedDigest, fileAttributes.digest, sizeof(fileAttributes.digest)) != 0))
 			{
-				NOT_IMPLEMENTED_ERROR; //TODO: ERROR
+				failedFilesLock.Lock();
+				failedFiles.Push(i);
+				failedFilesLock.Unlock();
+				return;
 			}
 
 			process.AddFinishedSize(fileAttributes.size);
@@ -240,7 +244,17 @@ void BackupManager::VerifySnapshot(const Snapshot &snapshot, StatusTracker& trac
 	}
 
 	this->threadPool.WaitForAllTasksToComplete();
-	process.Finished();
+
+	if(failedFiles.IsEmpty())
+		process.Finished();
+	else
+	{
+		for(uint32 fileIndex : failedFiles)
+		{
+			const Path& filePath = index->GetFile(fileIndex);
+			stdErr << u8"File '" << filePath << u8"' is corrupt." << endl;
+		}
+	}
 }
 
 //Class functions
@@ -311,6 +325,8 @@ void BackupManager::ReadInSnapshots()
 		if(snapshot.index)
 		{
 			this->snapshots.Push(snapshot);
+			if(this->snapshots.GetNumberOfElements() > 1)
+				this->snapshots.Last().prev = &this->snapshots[this->snapshots.GetNumberOfElements()-2];
 		}
 	}
 }

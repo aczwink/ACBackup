@@ -28,6 +28,7 @@ struct Snapshot
 {
 	String creationText;
 	BackupContainerIndex* index;
+	Snapshot* prev;
 };
 
 class BackupContainerIndex : public FileIndex

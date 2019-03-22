@@ -88,10 +88,8 @@ FixedArray<uint8> DeriveMasterKey(const String& masterPassword, const uint8* sal
 
 void GenerateSafeRandomBytes(uint8* destination, uint8 nBytes)
 {
-	for(uint8 i = 0; i < nBytes; i++)
-	{
-		destination[i] = 0xAB; //TODO: add randomization
-	}
+	SecureRandomNumberGenerator secureRandomNumberGenerator;
+	secureRandomNumberGenerator.NextBytes(destination, nBytes);
 }
 
 FixedArray<uint8> GenerateVerificationMessage()
@@ -100,10 +98,7 @@ FixedArray<uint8> GenerateVerificationMessage()
 	constexpr uint8 verificationMsgSize = 32;
 	uint8 verificationMsg[verificationMsgSize];
 
-	for(uint8 i = 0; i < verificationMsgSize; i++)
-	{
-		verificationMsg[i] = 0xCD; //TODO: add randomization
-	}
+	GenerateSafeRandomBytes(verificationMsg, verificationMsgSize);
 
 	//hash message
 	UniquePointer<HashFunction> hashFunction = HashFunction::CreateInstance(HashAlgorithm::SHA256);

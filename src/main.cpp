@@ -191,7 +191,7 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 	//TODO debugging
 	Init(OSFileSystem::GetInstance().GetWorkingDirectory(), true);
 	//add-snapshot /Users/amir/Downloads -l 128
-	//verify-snapshot snapshot_2019-03-17_20_25_10
+	//verify-snapshot snapshot_2019-03-22_14_27_28
 	//TODO end debugging
 
 	Path backupDir = OSFileSystem::GetInstance().GetWorkingDirectory();
