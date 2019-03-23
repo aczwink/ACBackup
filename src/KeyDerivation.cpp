@@ -81,7 +81,7 @@ FixedArray<uint8> DeriveMasterKey(const String& masterPassword, const uint8* sal
 
 	//generate master key
 	FixedArray<uint8> masterKey(AES_KEY_SIZE);
-	Crypto::scrypt(masterPassword, &saltAndPepper[0], saltAndPepper.GetNumberOfElements(), &masterKey[0], masterKey.GetNumberOfElements(), 10); //TODO: reset cost factor to 20
+	Crypto::scrypt(masterPassword, &saltAndPepper[0], saltAndPepper.GetNumberOfElements(), &masterKey[0], masterKey.GetNumberOfElements(), 20);
 
 	return masterKey;
 }

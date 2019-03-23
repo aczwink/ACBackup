@@ -31,12 +31,26 @@ public:
 
 	//Methods
 	void AddSnapshot(const FileIndex& index, StatusTracker& tracker, int8 maxCompressionLevel, uint64 memLimit);
+	void RestoreSnapshot(const Snapshot& snapshot, const Path& targetPath, StatusTracker& tracker) const;
 	void VerifySnapshot(const Snapshot& snapshot, StatusTracker& tracker) const;
 
 	//Functions
 	static void WriteCompressionStatsFile(const Path& path, const Map<String, float32>& compressionStats);
 
 	//Inline
+	inline bool RestoreSnapshot(const String& snapshotName, const Path& targetPath, StatusTracker& tracker) const
+	{
+		for(const Snapshot& snapshot : this->snapshots)
+		{
+			if(snapshot.creationText == snapshotName)
+			{
+				this->RestoreSnapshot(snapshot, targetPath, tracker);
+				return true;
+			}
+		}
+		return false;
+	}
+
 	inline bool VerifySnapshot(const String& snapshotName, StatusTracker& tracker) const
 	{
 		for(const Snapshot& snapshot : this->snapshots)

@@ -21,6 +21,17 @@
 #include "BackupManager.hpp"
 #include "KeyDerivation.hpp"
 
+static bool IsDirectoryEmpty(const Path& dirPath)
+{
+	auto dir = OSFileSystem::GetInstance().GetDirectory(dirPath);
+	auto dirWalker = dir->WalkFiles();
+
+	for (const auto &file : dirWalker)
+		return false;
+
+	return true;
+}
+
 static void PrintManual()
 {
 	stdOut << u8"Usage: ACBackup command [args...] [options...]" << endl
@@ -39,6 +50,12 @@ static void PrintManual()
 		   << u8"Args: none" << endl
 		   << u8"Options:" << endl
 		   << u8"-e\tEncrypt backup dir" << endl
+		   << endl
+
+		   << u8"command: restore-snapshot" << endl
+		   << u8"Restore a snapshot to a given location." << endl
+		   << u8"Args: snapshot name and target location in that order" << endl
+		   << u8"Options: none" << endl
 		   << endl
 
 		   << u8"command: verify" << endl
@@ -74,17 +91,7 @@ static int32 AddSnapshot(const Path& backupPath, const Path& sourcePath, int8 ma
 static int32 Init(const Path& dirPath, bool encrypted)
 {
 	//check if dir is empty
-	auto dir = OSFileSystem::GetInstance().GetDirectory(dirPath);
-	auto dirWalker = dir->WalkFiles();
-
-	bool empty = true;
-	for (const auto &file : dirWalker)
-	{
-		empty = false;
-		break;
-	}
-
-	if (!empty)
+	if (!IsDirectoryEmpty(dirPath))
 	{
 		stdErr << u8"Directory is not empty. Can not create backup dir here...";
 		return EXIT_FAILURE;
@@ -163,6 +170,28 @@ static int32 Init(const Path& dirPath, bool encrypted)
 	return EXIT_SUCCESS;
 }
 
+static int32 RestoreSnapshot(const Path& backupPath, const String& snapshotName, const Path& targetPath)
+{
+	BackupManager backupManager(backupPath);
+	StatusTracker tracker;
+
+	if(!IsDirectoryEmpty(targetPath))
+	{
+		stdErr << u8"Target directory is not empty. Can not restore snapshot to a not empty location..." << endl;
+		return EXIT_FAILURE;
+	}
+
+	if(backupManager.RestoreSnapshot(snapshotName, targetPath, tracker))
+	{
+		stdOut << u8"Snapshot restoration successful." << endl;
+	}
+	else
+	{
+		stdErr << u8"Couldn't find snapshot: " << snapshotName << endl;
+	}
+	return EXIT_SUCCESS;
+}
+
 static int32 VerifySnapshot(const Path& backupPath, const String& snapshotName)
 {
 	BackupManager backupManager(backupPath);
@@ -189,8 +218,9 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 	}
 
 	//TODO debugging
-	Init(OSFileSystem::GetInstance().GetWorkingDirectory(), true);
+	//Init(OSFileSystem::GetInstance().GetWorkingDirectory(), true);
 	//add-snapshot /Users/amir/Downloads -l 128
+	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
 	//verify-snapshot snapshot_2019-03-22_14_27_28
 	//TODO end debugging
 
@@ -238,6 +268,17 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 		}
 
 		return Init(OSFileSystem::GetInstance().GetWorkingDirectory(), encrypt);
+	}
+	else if(command == u8"restore-snapshot")
+	{
+		if(args.GetNumberOfElements() < 3)
+		{
+			stdErr << u8"Wrong arguments" << endl;
+			return EXIT_FAILURE;
+		}
+		String snapshotName = args[1];
+		Path targetPath = OSFileSystem::GetInstance().FromNativePath(args[2]);
+		return RestoreSnapshot(backupDir, snapshotName, targetPath);
 	}
 	else if(command == u8"verify-snapshot")
 	{

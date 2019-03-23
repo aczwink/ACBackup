@@ -22,6 +22,7 @@
 #include "FlatContainerIndex.hpp"
 #include "KeyDerivation.hpp"
 #include "KeyVerificationFailedException.hpp"
+#include "BackupContainerIndex.hpp"
 
 const char* c_comprStatsFileName = u8"compression_stats.csv";
 
@@ -190,37 +191,51 @@ void BackupManager::AddSnapshot(const FileIndex &index, StatusTracker& tracker, 
 	this->VerifySnapshot(this->snapshots.Last(), tracker);
 }
 
+void BackupManager::RestoreSnapshot(const Snapshot &snapshot, const Path &targetPath, StatusTracker &tracker) const
+{
+	ProcessStatus& process = tracker.AddProcessStatusTracker(u8"Restoring snapshot: " + snapshot.creationText, snapshot.index->GetNumberOfFiles(), snapshot.index->ComputeTotalFileDataSize());
+	for(uint32 i = 0; i < snapshot.index->GetNumberOfFiles(); i++)
+	{
+		this->threadPool.EnqueueTask([&snapshot, i, &targetPath, &process]()
+		{
+			BackupContainerIndex* dataIndex = snapshot.FindDataIndex(i);
+
+			//open files
+			const Path& filePath = snapshot.index->GetFile(i);
+			Path fileRestorePath = targetPath / filePath;
+			Path fileDir = fileRestorePath.GetParent();
+			if(!OSFileSystem::GetInstance().Exists(fileDir))
+				OSFileSystem::GetInstance().CreateDirectoryTree(fileDir);
+
+			UniquePointer<InputStream> input = dataIndex->OpenFileForReading(filePath);
+			FileOutputStream output(fileRestorePath);
+
+			//write
+			uint32 flushedSize = input->FlushTo(output);
+
+			process.AddFinishedSize(flushedSize);
+			process.IncFinishedCount();
+		});
+	}
+
+	this->threadPool.WaitForAllTasksToComplete();
+}
+
 void BackupManager::VerifySnapshot(const Snapshot &snapshot, StatusTracker& tracker) const
 {
 	BackupContainerIndex* index = snapshot.index;
 
-	//compute total size
-	uint64 totalSize = 0;
-	for(uint32 i = 0; i < index->GetNumberOfFiles(); i++)
-	{
-		totalSize += index->GetFileAttributes(i).size;
-	}
-
 	DynamicArray<uint32> failedFiles;
 	Mutex failedFilesLock;
 
-	ProcessStatus& process = tracker.AddProcessStatusTracker(u8"Verifying snapshot: " + snapshot.creationText, index->GetNumberOfFiles(), totalSize);
+	ProcessStatus& process = tracker.AddProcessStatusTracker(u8"Verifying snapshot: " + snapshot.creationText, index->GetNumberOfFiles(), index->ComputeTotalFileDataSize());
 	for(uint32 i = 0; i < index->GetNumberOfFiles(); i++)
 	{
 		this->threadPool.EnqueueTask([&snapshot, i, &process, &failedFiles, &failedFilesLock](){
-			//find data first
-			uint32 fileIndex = i;
-			const Path& filePath = snapshot.index->GetFile(i);
-			const Snapshot* dataSnapshot = &snapshot;
-			while(!dataSnapshot->index->HasFileData(fileIndex))
-			{
-				dataSnapshot = dataSnapshot->prev;
-				fileIndex = dataSnapshot->index->FindFileIndex(filePath);
-			}
-			BackupContainerIndex* dataIndex = dataSnapshot->index;
+			BackupContainerIndex* dataIndex = snapshot.FindDataIndex(i);
 
 			//compute digest
-			UniquePointer<InputStream> input = dataIndex->OpenFileForReading(filePath);
+			UniquePointer<InputStream> input = dataIndex->OpenFileForReading(snapshot.index->GetFile(i));
 			UniquePointer<Crypto::HashFunction> hasher = Crypto::HashFunction::CreateInstance(Crypto::HashAlgorithm::MD5);
 			uint64 readSize = hasher->Update(*input);
 

@@ -29,6 +29,13 @@ struct Snapshot
 	String creationText;
 	BackupContainerIndex* index;
 	Snapshot* prev;
+
+	/**
+	 * Find the index that has the payload data of the file identified by index of this snapshot.
+	 * @param fileIndex
+	 * @return
+	 */
+	inline BackupContainerIndex* FindDataIndex(uint32 fileIndex) const;
 };
 
 class BackupContainerIndex : public FileIndex
@@ -48,6 +55,19 @@ public:
 	//Functions
 	static Snapshot Deserialize(const Path &path, const Optional<EncryptionInfo>& encryptionInfo);
 
+	//Inline
+	/**
+	 * No compression or filtering whatsoever. The size of the files as they were originally.
+	 * @return
+	 */
+	inline uint64 ComputeTotalFileDataSize() const
+	{
+		uint64 totalSize = 0;
+		for(uint32 i = 0; i < this->GetNumberOfFiles(); i++)
+			totalSize += this->GetFileAttributes(i).size;
+		return totalSize;
+	}
+
 protected:
 	//Inline
 	inline const Path& GetPathPrefix() const
@@ -59,3 +79,14 @@ private:
 	//Members
 	Path prefixPath;
 };
+
+inline BackupContainerIndex* Snapshot::FindDataIndex(uint32 fileIndex) const
+{
+	if(!this->index->HasFileData(fileIndex))
+	{
+		const Path& filePath = this->index->GetFile(fileIndex);
+		return this->prev->FindDataIndex(this->prev->index->FindFileIndex(filePath));
+	}
+
+	return this->index;
+}
