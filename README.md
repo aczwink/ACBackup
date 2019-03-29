@@ -30,5 +30,38 @@ Don't specify too high numbers here and always leave some space for the rest of 
 #### Recommended settings
 Here are settings that I recommend for certain hardware. I assume here that ACBackup is virtually the only (heavy) process running on the machine.
 | Machine | -c | -l |
-| ------- | ------------- |
+| ---------- | -- | -- |
 | Raspberry Pi 3 Model B+ (4 cores, 1 GiB RAM) | 3 | 160 |
+
+## Cryptographic analysis
+ACBackup uses three types of keys: a master key, snapshot keys and an application key.
+As ACBackup uses AES-256 for encryption, all keys are 32 bytes long.
+
+The master key is the central and most important key and is unique per backup directory.
+It is generated from a user-supplied password, 192 bytes of random salt and 128 bytes of pepper that are static to the application.
+The password is something only the user knows, and the master salt is something that only the user owns.
+The master key is derived with the scrypt algorithm with a cost factor of 20.
+As salt to scrpyt the master salt is taken and concatenated with the master pepper.
+The master password is encoded as UTF-8.
+
+The snapshot keys are derived from the master key and are used for encrypting the snapshot files.
+The keys for index and data files are not the same.
+They are derived with HKDF-SHA512, a 128 bytes random salt (static for the backup directory) and the snapshot file name as info.
+The index file is encoded in CBC mode, while the data file is encoded in CTR mode.
+I.e. all source files (data) are encrypted with the same key within a snapshot but the initial value (16 bytes) is chosen randomly for each file. 
+
+The application key is static for the whole application (and will never change).
+It is only there to protect the master salt - i.e. even if the master salt is stolen, you still have to know the application key and the master pepper in order to derive the master key.
+This is actually not really a protection since the information for deriving the application key can be obtained from the source code. 
+The only advantage is that the software is quite unknown and thus also the application key.
+
+When initializing an encrypted backup dir a file called "master_key" is created.
+It contains the master salt encrypted with the application key, the snapshot key salt encrypted with the master key and a random verification message also encrypted with the master key.
+The master salt is the information with high entropy in comparison with your password.
+If your password is compromised, thats bad, but worse when your salt is stolen.
+Never keep the master_key file inside the backup directory, move it in when you need to encrypt/decrypt something and when you're done move it out again.
+And move it to a safe location like a USB stick or so.
+Never keep it somewhere where you have a network connection with an unsafe network (i.e. Internet).
+Be also sure to keep your master_key file safe.
+Store it to several locations.
+If you loose your master_key file or if it ever gets corrupted - your files are lost for good - you can NEVER restore them.
