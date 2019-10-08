@@ -17,16 +17,21 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 //Local
-#include "commands/Commands.hpp"
+#include "../status/StatusTracker.hpp"
+#include "../Config.hpp"
+#include "FileSystemNodeIndex.hpp"
 
-int32 Main(const String& programName, const FixedArray<String>& args)
+class OSFileSystemNodeIndex : public FileSystemNodeIndex
 {
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
+public:
+	//Constructor
+	OSFileSystemNodeIndex(const Path& path, StatusTracker& tracker, const Config& config);
 
-	return EXIT_SUCCESS;
-}
+private:
+	//Members
+	Path basePath;
+	StatusTracker& tracker;
+
+	//Methods
+	void GenerateIndex(const Config& config);
+};

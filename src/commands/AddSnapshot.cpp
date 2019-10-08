@@ -16,17 +16,23 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <Std++.hpp>
+using namespace StdXX;
 //Local
-#include "commands/Commands.hpp"
+#include "../Config.hpp"
+#include "../status/StatusTracker.hpp"
+#include "../backup/SnapshotManager.hpp"
+#include "../indexing/OSFileSystemNodeIndex.hpp"
 
-int32 Main(const String& programName, const FixedArray<String>& args)
+int32 CommandAddSnapshot(const Path& backupPath, const Path& sourcePath)
 {
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
+	Config config(backupPath);
+
+	StatusTracker tracker(config.Port());
+	SnapshotManager snapshotManager(backupPath, config, tracker);
+
+	OSFileSystemNodeIndex sourceIndex(sourcePath, tracker, config);
+	snapshotManager.AddSnapshot(sourceIndex);
 
 	return EXIT_SUCCESS;
 }

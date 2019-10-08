@@ -16,17 +16,43 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
+#pragma once
 //Local
-#include "commands/Commands.hpp"
+#include "StatusTrackerWebService.hpp"
+#include "ProcessStatus.hpp"
 
-int32 Main(const String& programName, const FixedArray<String>& args)
+class StatusTracker
 {
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
+public:
+	//Constructor
+	StatusTracker(uint16 port);
 
-	return EXIT_SUCCESS;
-}
+	//Destructor
+	~StatusTracker();
+
+	//Inline
+	inline ProcessStatus& AddProcessStatusTracker(const String& title)
+	{
+		AutoLock lock(this->processesLock);
+
+		this->processes.InsertTail(new ProcessStatus(title));
+		return *this->processes.Last();
+	}
+
+	inline uint16 GetPort() const
+	{
+		return this->httpServer.GetBoundPort();
+	}
+
+	inline HTTPServer& GetServer()
+	{
+		return this->httpServer;
+	}
+
+private:
+	//Members
+	StatusTrackerWebService httpServer;
+	Thread thread;
+	LinkedList<UniquePointer<ProcessStatus>> processes;
+	Mutex processesLock;
+};

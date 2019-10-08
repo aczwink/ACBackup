@@ -16,17 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Local
-#include "commands/Commands.hpp"
+#include <Std++.hpp>
+using namespace StdXX;
 
-int32 Main(const String& programName, const FixedArray<String>& args)
-{
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
-
-	return EXIT_SUCCESS;
-}
+//Prototypes
+int32 CommandAddSnapshot(const Path& backupPath, const Path& sourcePath);
+int32 CommandInit(const Path& dirPath);

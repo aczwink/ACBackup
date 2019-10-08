@@ -16,17 +16,31 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Local
-#include "commands/Commands.hpp"
+#pragma once
+#include <Std++.hpp>
+using namespace StdXX;
 
-int32 Main(const String& programName, const FixedArray<String>& args)
+class ProcessStatus
 {
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
+public:
+	//Constructor
+	inline ProcessStatus(const String& title)
+			: title(title), startTime(DateTime::Now())
+	{
+		this->isEndDeterminate = false;
+		this->nFinishedFiles = 0;
+		this->nFiles = 0;
+		this->doneSize = 0;
+		this->totalSize = 0;
+	}
 
-	return EXIT_SUCCESS;
-}
+private:
+	//Members
+	String title;
+	DateTime startTime;
+	bool isEndDeterminate;
+	uint32 nFinishedFiles;
+	uint32 nFiles;
+	uint64 totalSize;
+	uint64 doneSize;
+};

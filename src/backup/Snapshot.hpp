@@ -16,17 +16,22 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Local
-#include "commands/Commands.hpp"
+#include <Std++.hpp>
+using namespace StdXX;
 
-int32 Main(const String& programName, const FixedArray<String>& args)
+class Snapshot
 {
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
+public:
+	//Properties
+	inline void Previous(Snapshot* newPrevious)
+	{
+		this->prev = newPrevious;
+	}
 
-	return EXIT_SUCCESS;
-}
+	//Functions
+	static UniquePointer<Snapshot> Deserialize(const Path& path);
+
+private:
+	//Members
+	Snapshot* prev;
+};

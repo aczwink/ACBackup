@@ -16,17 +16,26 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <Std++.hpp>
+using namespace StdXX;
 //Local
-#include "commands/Commands.hpp"
+#include "../Config.hpp"
 
-int32 Main(const String& programName, const FixedArray<String>& args)
+static bool IsDirectoryEmpty(const Path& dirPath)
 {
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
+	auto dir = OSFileSystem::GetInstance().GetDirectory(dirPath);
+	return dir->IsEmpty();
+}
 
-	return EXIT_SUCCESS;
+int32 CommandInit(const Path& dirPath)
+{
+	//check if dir is empty
+	if (!IsDirectoryEmpty(dirPath))
+	{
+		stdErr << u8"Directory is not empty. Can not create backup dir here..." << endl;
+		return EXIT_FAILURE;
+	}
+
+	Config c;
+	c.Write(dirPath);
 }

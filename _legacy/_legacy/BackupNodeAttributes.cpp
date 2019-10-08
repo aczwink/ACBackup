@@ -16,17 +16,16 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Local
-#include "commands/Commands.hpp"
+//Class header
+#include "BackupNodeAttributes.hpp"
 
-int32 Main(const String& programName, const FixedArray<String>& args)
+//Private methods
+void BackupNodeAttributes::ConfigureCompression(float32 compressionRate)
 {
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
+	int8 maxCompressionLevel = this->config.MaxCompressionLevel();
 
-	return EXIT_SUCCESS;
+	float32 c = (maxCompressionLevel+1) * (1 - compressionRate);
+	this->compressionLevel = static_cast<uint8>(round(c));
+	this->isCompressed = !((maxCompressionLevel == -1) or (this->compressionLevel == 0));
+	this->compressionLevel--;
 }

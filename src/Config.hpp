@@ -16,17 +16,40 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Local
-#include "commands/Commands.hpp"
+#pragma once
+#include <Std++.hpp>
+using namespace StdXX;
 
-int32 Main(const String& programName, const FixedArray<String>& args)
+class Config
 {
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
+public:
+	//Constructors
+	Config();
+	Config(const Path& dirPath);
 
-	return EXIT_SUCCESS;
-}
+	//Properties
+	inline uint16 Port() const
+	{
+		return this->port;
+	}
+
+	//Methods
+	void Write(const Path& dirPath);
+
+private:
+	//Members
+	uint16 port;
+
+	//Inline
+	inline String GetDefaultConfigFileName() const
+	{
+		return u8"bkpconfig.json";
+	}
+
+	template<typename T>
+	inline void WriteConfigValue(TextWriter& textWriter, uint16 nTabs, const String& key, T value, const String& comment) const
+	{
+		textWriter.WriteTabs(nTabs);
+		textWriter << u8"\"" << key << "\": " << value << u8", //" << comment << endl;
+	}
+};

@@ -17,16 +17,30 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 //Local
-#include "commands/Commands.hpp"
+#include "_legacy/FlatContainerIndex.hpp"
 
-int32 Main(const String& programName, const FixedArray<String>& args)
+class FlatContainerFileSystem : public ContainerFileSystem
 {
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
+public:
+	//Constructor
+	inline FlatContainerFileSystem(const FlatContainerIndex& index, const Path& path) : ContainerFileSystem(nullptr, path)
+	{
+		NOT_IMPLEMENTED_ERROR; //TODO: reimplement me
+		/*
+		//add files to file system
+		for(uint32 i = 0; i < index.GetNumberOfNodes(); i++)
+		{
+			const BackupNodeAttributes& attributes = index.GetSpecificNodeAttributes(i);
 
-	return EXIT_SUCCESS;
-}
+			ContainerFileHeader header;
+			header.offset = attributes.offset;
+			header.uncompressedSize = attributes.Size();
+			header.compressedSize = attributes.blockSize;
+
+			this->AddSourceFile(index.GetNodePath(i), header);
+		}*/
+	}
+
+	//Methods
+	void Flush() override;
+};

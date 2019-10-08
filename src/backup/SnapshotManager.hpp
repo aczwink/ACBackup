@@ -17,16 +17,25 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 //Local
-#include "commands/Commands.hpp"
+#include "../Config.hpp"
+#include "../indexing/FileSystemNodeIndex.hpp"
+#include "../status/StatusTracker.hpp"
+#include "Snapshot.hpp"
 
-int32 Main(const String& programName, const FixedArray<String>& args)
+class SnapshotManager
 {
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
+public:
+	//Constructor
+	SnapshotManager(const Path& path, const Config& config, const StatusTracker& statusTracker);
 
-	return EXIT_SUCCESS;
-}
+	//Methods
+	void AddSnapshot(const FileSystemNodeIndex& index);
+
+private:
+	//Members
+	Path backupPath;
+	DynamicArray<UniquePointer<Snapshot>> snapshots;
+
+	//Methods
+	void ReadInSnapshots();
+};

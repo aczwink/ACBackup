@@ -10,5 +10,5 @@ XPC_SetCompileDefinitions()
 
 find_package(StdPlusPlus REQUIRED)
 
-add_executable(ACBackup src/main.cpp src/FileIndex.hpp src/FileSystemIndex.hpp src/FileSystemIndex.cpp src/BackupManager.hpp src/BackupManager.cpp src/FlatContainerIndex.hpp src/FlatContainerIndex.cpp src/BackupContainerIndex.hpp src/BackupContainerIndex.cpp src/FlatContainerFileSystem.hpp src/FlatContainerFileSystem.cpp src/StatusTracker.hpp src/StatusTracker.cpp src/resources.hpp src/StatusTrackerWebService.hpp src/StatusTrackerWebService.cpp src/ProcessStatus.hpp src/ProcessStatus.cpp src/KeyDerivation.hpp src/KeyDerivation.cpp src/KeyVerificationFailedException.hpp src/IndexingReadException.hpp)
+add_executable(ACBackup src/main.cpp src/commands/Commands.hpp src/commands/Init.cpp src/Config.hpp src/Config.cpp src/commands/AddSnapshot.cpp src/status/StatusTracker.hpp src/backup/SnapshotManager.hpp src/indexing/OSFileSystemNodeIndex.hpp src/indexing/FileSystemNodeIndex.hpp src/status/StatusTracker.cpp src/status/StatusTrackerWebService.hpp src/backup/SnapshotManager.cpp src/indexing/OSFileSystemNodeIndex.cpp src/status/StatusTrackerWebService.cpp src/backup/Snapshot.hpp src/backup/Snapshot.cpp src/status/ProcessStatus.hpp src/indexing/FileSystemNodeAttributes.hpp)
 target_link_libraries(ACBackup Std++ Std++Static)

@@ -16,17 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Local
-#include "commands/Commands.hpp"
+//Class header
+#include "StatusTrackerWebService.hpp"
 
-int32 Main(const String& programName, const FixedArray<String>& args)
+//Constructor
+StatusTrackerWebService::StatusTrackerWebService(StatusTracker& statusTracker, uint16 port) : statusTracker(statusTracker),
+                                                                                              HTTPServer(IPv4Address::GetAnyHostAddress(), port)
 {
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
-
-	return EXIT_SUCCESS;
 }

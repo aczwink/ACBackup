@@ -16,17 +16,30 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Local
-#include "commands/Commands.hpp"
+//Class header
+#include "StatusTracker.hpp"
 
-int32 Main(const String& programName, const FixedArray<String>& args)
+static StatusTracker* g_tracker = nullptr;
+static int32 NetworkThreadMain()
 {
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
-
+	stdOut << u8"Listening on 0.0.0.0:" << g_tracker->GetPort() << endl;
+	g_tracker->GetServer().Serve();
 	return EXIT_SUCCESS;
+}
+
+//Constructor
+StatusTracker::StatusTracker(uint16 port) : httpServer(*this, port), thread(NetworkThreadMain)
+{
+	g_tracker = this;
+	this->thread.Start();
+}
+
+//Destructor
+StatusTracker::~StatusTracker()
+{
+	Sleep(uint64(2) * 1000 * 1000 * 1000); //Wait so that status trackers can get the result
+	stdOut << u8"Shutting down server..." << endl;
+	this->httpServer.Shutdown();
+	this->thread.Join();
+	stdOut << u8"Server has been shut down!" << endl;
 }
