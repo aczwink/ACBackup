@@ -18,6 +18,8 @@
  */
 //Class header
 #include "OSFileSystemNodeIndex.hpp"
+//Local
+#include "LinkPointsOutOfIndexDirException.hpp"
 
 //Constructor
 OSFileSystemNodeIndex::OSFileSystemNodeIndex(const Path &path, StatusTracker &tracker, const Config &config) : basePath(path), tracker(tracker)
@@ -37,7 +39,7 @@ void OSFileSystemNodeIndex::GenerateIndex(const Config &config)
 	for(const Path& relPath : dirWalker)
 	{
 		AutoPointer<const FileSystemNode> node = OSFileSystem::GetInstance().GetNode(this->basePath / relPath);
-		FileSystemNodeAttributes* attributes;
+		UniquePointer<FileSystemNodeAttributes> attributes;
 		switch(node->GetType())
 		{
 			case FileSystemNodeType::File:
@@ -70,8 +72,7 @@ void OSFileSystemNodeIndex::GenerateIndex(const Config &config)
 				RAISE(ErrorHandling::IllegalCodePathError);
 		}
 
-		uint32 index = this->nodeAttributes.Push(attributes);
-		this->pathMap.Insert(relPath, index);
+		this->AddNode(relPath, Move(attributes));
 		findStatus.IncFileCount();
 	}
 	findStatus.Finished();

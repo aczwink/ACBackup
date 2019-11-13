@@ -11,14 +11,6 @@ public:
 		this->processesLock.Lock();
 	}
 
-	inline ProcessStatus& AddProcessStatusTracker(const String& title, uint32 nFiles, uint64 totalSize)
-	{
-		AutoLock lock(this->processesLock);
-
-		this->processes.InsertTail(new ProcessStatus(title, nFiles, totalSize));
-		return *this->processes.Last();
-	}
-
 	inline auto GetProcessesBegin()
 	{
 		return this->processes.begin();

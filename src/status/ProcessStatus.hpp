@@ -32,6 +32,38 @@ public:
 		this->nFiles = 0;
 		this->doneSize = 0;
 		this->totalSize = 0;
+
+		this->clock.Start();
+	}
+
+	inline ProcessStatus(const String& title, uint32 nFiles, uint64 totalSize)
+			: title(title), nFiles(nFiles), totalSize(totalSize), startTime(DateTime::Now())
+	{
+		this->isEndDeterminate = true;
+		this->nFinishedFiles = 0;
+		this->doneSize = 0;
+
+		this->clock.Start();
+	}
+
+	//Inline
+	inline void Finished()
+	{
+		AutoLock lock(this->mutex);
+		this->endTime = DateTime::Now();
+		this->totalTaskDuration = this->clock.GetElapsedMicroseconds();
+	}
+
+	inline void IncFileCount()
+	{
+		AutoLock lock(this->mutex);
+		this->nFiles++;
+	}
+
+	inline void IncFinishedCount()
+	{
+		AutoLock lock(this->mutex);
+		this->nFinishedFiles++;
 	}
 
 private:
@@ -43,4 +75,8 @@ private:
 	uint32 nFiles;
 	uint64 totalSize;
 	uint64 doneSize;
+	Optional<DateTime> endTime;
+	uint64 totalTaskDuration;
+	Clock clock;
+	mutable Mutex mutex;
 };

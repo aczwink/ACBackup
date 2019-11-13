@@ -5,8 +5,6 @@
 #include "../KeyVerificationFailedException.hpp"
 #include "../BackupContainerIndex.hpp"
 
-const char* c_comprStatsFileName = u8"compression_stats.csv";
-
 //Constructor
 BackupManager::BackupManager(const Path &path, const Config& config), config(config)
 {
@@ -63,30 +61,6 @@ BackupManager::BackupManager(const Path &path, const Config& config), config(con
 		EncryptionInfo encInfo = {Move(masterKey), Move(subKeyDeriveSalt)};
 		this->encryptionInfo = Move(encInfo);
 	}
-
-	//read in compression stats
-	FileInputStream fileInputStream(this->backupPath / String(c_comprStatsFileName));
-	BufferedInputStream bufferedInputStream(fileInputStream);
-	TextReader textReader(bufferedInputStream, TextCodecType::UTF8);
-	CommonFileFormats::CSVReader csvReader(textReader, CommonFileFormats::csvDialect_excel);
-
-	//skip first line
-	String cell;
-	csvReader.ReadCell(cell);
-	csvReader.ReadCell(cell);
-
-	//read lines
-	String rate;
-	while(true)
-	{
-		csvReader.ReadCell(cell);
-		bool haveValue = csvReader.ReadCell(rate);
-
-		if(haveValue)
-			this->compressionStats[cell] = rate.ToFloat32();
-		else
-			break;
-	}
 }
 
 //Destructor
@@ -98,20 +72,6 @@ BackupManager::~BackupManager()
 //Public methods
 void BackupManager::AddSnapshot(const FileSystemNodeIndex &index, StatusTracker& tracker)
 {
-	BinaryTreeSet<uint32> diffNodeIndices = this->ComputeDifference(index, tracker);
-
-	//compute total size
-	uint64 totalSize = 0;
-	for(uint32 idx : diffNodeIndices)
-	{
-		const FileSystemNodeAttributes& fileAttributes = index.GetNodeAttributes(idx);
-		if(fileAttributes.Type() == IndexableNodeType::File)
-			totalSize += fileAttributes.Size();
-	}
-
-	UniquePointer<Snapshot> snapshot = new Snapshot(this->backupPath, this->encryptionInfo);
-	ProcessStatus& process = tracker.AddProcessStatusTracker(u8"Creating snapshot: " + snapshot->Name(), index.GetNumberOfNodes(), totalSize);
-
 	for(uint32 i = 0; i < index.GetNumberOfNodes(); i++)
 	{
 		if(diffNodeIndices.Contains(i))
@@ -121,9 +81,6 @@ void BackupManager::AddSnapshot(const FileSystemNodeIndex &index, StatusTracker&
 
 			this->threadPool.EnqueueTask([this, &index, &snapshot, &process, i, maxCompressionLevel, memLimit]()
 			{
-				const Path& filePath = index.GetNodePath(i);
-				const FileSystemNodeAttributes& fileAttributes = index.GetNodeAttributes(i);
-
 				switch(fileAttributes.Type())
 				{
 					case IndexableNodeType::File:
@@ -139,21 +96,10 @@ void BackupManager::AddSnapshot(const FileSystemNodeIndex &index, StatusTracker&
 					case IndexableNodeType::Link:
 						snapshot->BackupLink(filePath);
 						break;
-					default:
-						RAISE(ErrorHandling::IllegalCodePathError);
 				}
-
-				process.IncFinishedCount();
 			});
 		}
-		else
-		{
-			NOT_IMPLEMENTED_ERROR; //TODO: this should be a previous file but validate this!
-			process.IncFinishedCount();
-		}
 	}
-	this->threadPool.WaitForAllTasksToComplete();
-	process.Finished();
 
 	NOT_IMPLEMENTED_ERROR; //TODO: WHAT FOLLOWS IS LEGACY CODE
 

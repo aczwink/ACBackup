@@ -39,6 +39,14 @@ public:
 		return *this->processes.Last();
 	}
 
+	inline ProcessStatus& AddProcessStatusTracker(const String& title, uint32 nFiles, uint64 totalSize)
+	{
+		AutoLock lock(this->processesLock);
+
+		this->processes.InsertTail(new ProcessStatus(title, nFiles, totalSize));
+		return *this->processes.Last();
+	}
+
 	inline uint16 GetPort() const
 	{
 		return this->httpServer.GetBoundPort();

@@ -1,6 +1,5 @@
 //Local
 #include "IndexingReadException.hpp"
-#include "LinkPointsOutOfIndexDirException.hpp"
 #include "FileSystemNodeAttributes.hpp"
 #include "../../src/indexing/OSFileSystemNodeIndex.hpp"
 
@@ -52,21 +51,6 @@ uint32 OSFileSystemNodeIndex::FindNodeIndex(const Path &path) const
 	if(this->pathMap.Contains(path))
 		return this->pathMap.Get(path);
 	return Unsigned<uint32>::Max();
-}
-
-const Path &OSFileSystemNodeIndex::GetNodePath(uint32 index) const
-{
-	return this->pathMap.GetReverse(index);
-}
-
-const FileSystemNodeAttributes &OSFileSystemNodeIndex::GetNodeAttributes(uint32 index) const
-{
-	return *this->nodeAttributes[index];
-}
-
-uint32 OSFileSystemNodeIndex::GetNumberOfNodes() const
-{
-	return this->nodeAttributes.GetNumberOfElements();
 }
 
 UniquePointer<InputStream> OSFileSystemNodeIndex::OpenFileForReading(const Path &fileEntry) const

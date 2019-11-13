@@ -19,6 +19,46 @@
 //Class header
 #include "Snapshot.hpp"
 
+//Constructor
+Snapshot::Snapshot(const Path& dirPath) : dirPath(dirPath)
+{
+	DateTime dateTime = DateTime::Now();
+	String snapshotName = u8"snapshot_" + dateTime.GetDate().ToISOString() + u8"_";
+	snapshotName += String::Number(dateTime.GetTime().GetHour(), 10, 2) + u8"_" + String::Number(dateTime.GetTime().GetMinute(), 10, 2) + u8"_" + String::Number(dateTime.GetTime().GetSecond(), 10, 2);
+
+	this->name = snapshotName;
+	this->prev = nullptr;
+	this->index = new FileSystemNodeIndex();
+	this->fileSystem = FileSystem::Create(FileTypes::UTI::zip, this->dirPath / (snapshotName + u8".zip"));
+}
+
+//Public methods
+void Snapshot::AddNode(uint32 nodeIndex, const FileSystemNodeIndex &sourceIndex)
+{
+	const Path& filePath = sourceIndex.GetNodePath(nodeIndex);
+	const FileSystemNodeAttributes& fileAttributes = sourceIndex.GetNodeAttributes(nodeIndex);
+
+	this->index->AddNode(filePath, new FileSystemNodeAttributes(fileAttributes));
+
+	switch(fileAttributes.Type())
+	{
+		case IndexableNodeType::File:
+			{
+				UniquePointer<OutputStream> fileOutputStream = this->fileSystem->CreateFile(filePath);
+				FileInputStream fileInputStream(this->dirPath / filePath);
+
+				fileInputStream.FlushTo(*fileOutputStream);
+
+				NOT_IMPLEMENTED_ERROR; //TODO: implement me
+			}
+			break;
+		case IndexableNodeType::Link:
+			NOT_IMPLEMENTED_ERROR; //TODO: implement me
+		default:
+			RAISE(ErrorHandling::IllegalCodePathError);
+	}
+}
+
 //Public functions
 UniquePointer<Snapshot> Snapshot::Deserialize(const Path &path)
 {

@@ -26,7 +26,7 @@ class SnapshotManager
 {
 public:
 	//Constructor
-	SnapshotManager(const Path& path, const Config& config, const StatusTracker& statusTracker);
+	SnapshotManager(const Path& path, const Config& config, StaticThreadPool& threadPool, StatusTracker& statusTracker);
 
 	//Methods
 	void AddSnapshot(const FileSystemNodeIndex& index);
@@ -34,8 +34,29 @@ public:
 private:
 	//Members
 	Path backupPath;
+	StaticThreadPool& threadPool;
+	StatusTracker& statusTracker;
 	DynamicArray<UniquePointer<Snapshot>> snapshots;
 
 	//Methods
 	void ReadInSnapshots();
+
+	//Inline
+	inline BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& index)
+	{
+		if(this->LastIndex())
+			NOT_IMPLEMENTED_ERROR; //TODO: implement me
+
+		BinaryTreeSet<uint32> result;
+		for(uint32 i = 0; i < index.GetNumberOfNodes(); i++)
+			result.Insert(i);
+		return result;
+	}
+
+	inline const FileSystemNodeIndex* LastIndex() const
+	{
+		if(this->snapshots.IsEmpty())
+			return nullptr;
+		return &this->snapshots.Last()->Index();
+	}
 };

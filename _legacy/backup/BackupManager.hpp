@@ -48,28 +48,15 @@ private:
 	Map<String, float32> compressionStats;
 	Mutex compressionStatsLock;
 	Optional<EncryptionInfo> encryptionInfo;
-	mutable StaticThreadPool threadPool;
 
 	void AddCompressionRateSample(const String& fileExtension, float32 compressionRate);
 	void DropSnapshots();
 	float32 GetCompressionRate(const String& fileExtension);
 
 	//Inline
-	inline BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& index, StatusTracker& tracker)
+	inline BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& index)
 	{
 		if(this->LastIndex())
 			return index.ComputeDifference(*this->LastIndex(), this->threadPool, tracker);
-
-		BinaryTreeSet<uint32> result;
-		for(uint32 i = 0; i < index.GetNumberOfNodes(); i++)
-			result.Insert(i);
-		return result;
-	}
-
-	inline const FileSystemNodeIndex* LastIndex() const
-	{
-		if(this->snapshots.IsEmpty())
-			return nullptr;
-		return &this->snapshots.Last()->Index();
 	}
 };

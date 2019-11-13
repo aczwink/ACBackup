@@ -23,13 +23,16 @@ using namespace StdXX;
 #include "../status/StatusTracker.hpp"
 #include "../backup/SnapshotManager.hpp"
 #include "../indexing/OSFileSystemNodeIndex.hpp"
+#include "../CompressionStatistics.hpp"
 
 int32 CommandAddSnapshot(const Path& backupPath, const Path& sourcePath)
 {
 	Config config(backupPath);
+	CompressionStatistics statistics(backupPath);
 
+	StaticThreadPool threadPool;
 	StatusTracker tracker(config.Port());
-	SnapshotManager snapshotManager(backupPath, config, tracker);
+	SnapshotManager snapshotManager(backupPath, config, threadPool, tracker);
 
 	OSFileSystemNodeIndex sourceIndex(sourcePath, tracker, config);
 	snapshotManager.AddSnapshot(sourceIndex);

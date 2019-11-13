@@ -11,10 +11,6 @@ public:
 
 	//Abstract
 	virtual uint32 FindNodeIndex(const Path& path) const = 0;
-	virtual const Path& GetNodePath(uint32 index) const = 0;
-	virtual const FileSystemNodeAttributes& GetNodeAttributes(uint32 index) const = 0;
-	virtual uint32 GetNumberOfNodes() const = 0;
-	virtual UniquePointer<InputStream> OpenFileForReading(const Path& fileEntry) const = 0;
 
 	//Methods
 	/**

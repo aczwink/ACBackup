@@ -16,30 +16,24 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
+#pragma once
 #include <Std++.hpp>
 using namespace StdXX;
-//Local
-#include "../Config.hpp"
-#include "../CompressionStatistics.hpp"
 
-static bool IsDirectoryEmpty(const Path& dirPath)
+class CompressionStatistics
 {
-	auto dir = OSFileSystem::GetInstance().GetDirectory(dirPath);
-	return dir->IsEmpty();
-}
+public:
+	//Constructor
+	CompressionStatistics() = default;
+	explicit CompressionStatistics(const Path& path);
 
-int32 CommandInit(const Path& dirPath)
-{
-	//check if dir is empty
-	if (!IsDirectoryEmpty(dirPath))
-	{
-		stdErr << u8"Directory is not empty. Can not create backup dir here..." << endl;
-		return EXIT_FAILURE;
-	}
+	//Methods
+	void Write(const Path& dirPath);
 
-	Config c;
-	c.Write(dirPath);
+private:
+	//Constants
+	const String c_comprStatsFileName = u8"compression_stats.csv";
 
-	CompressionStatistics compressionStatistics;
-	compressionStatistics.Write(dirPath);
-}
+	//Members
+	Map<String, float32> compressionStats;
+};

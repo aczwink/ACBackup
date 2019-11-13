@@ -22,4 +22,44 @@
 
 class FileSystemNodeIndex
 {
+public:
+	//Inline
+	inline void AddNode(const Path& path, UniquePointer<FileSystemNodeAttributes>&& attributes)
+	{
+		uint32 index = this->nodeAttributes.Push(Move(attributes));
+		this->pathMap.Insert(path, index);
+	}
+
+	inline uint64 ComputeTotalSize(const BinaryTreeSet<uint32>& nodeIndices) const
+	{
+		uint64 totalSize = 0;
+		for(uint32 idx : nodeIndices)
+		{
+			const FileSystemNodeAttributes& fileAttributes = this->GetNodeAttributes(idx);
+			if(fileAttributes.Type() == IndexableNodeType::File)
+				totalSize += fileAttributes.Size();
+		}
+
+		return totalSize;
+	}
+
+	inline const FileSystemNodeAttributes& GetNodeAttributes(uint32 index) const
+	{
+		return *this->nodeAttributes[index];
+	}
+
+	inline const Path& GetNodePath(uint32 index) const
+	{
+		return this->pathMap.GetReverse(index);
+	}
+
+	inline uint32 GetNumberOfNodes() const
+	{
+		return this->nodeAttributes.GetNumberOfElements();
+	}
+
+private:
+	//Members
+	DynamicArray<UniquePointer<FileSystemNodeAttributes>> nodeAttributes;
+	BijectiveMap<Path, uint32> pathMap;
 };

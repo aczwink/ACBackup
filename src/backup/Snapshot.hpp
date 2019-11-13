@@ -18,20 +18,42 @@
  */
 #include <Std++.hpp>
 using namespace StdXX;
+//Local
+#include "../indexing/FileSystemNodeIndex.hpp"
 
 class Snapshot
 {
 public:
+	//Constructor
+	Snapshot(const Path& path);
+
 	//Properties
+	inline const FileSystemNodeIndex& Index() const
+	{
+		return *this->index;
+	}
+
+	inline const String& Name() const
+	{
+		return this->name;
+	}
+
 	inline void Previous(Snapshot* newPrevious)
 	{
 		this->prev = newPrevious;
 	}
+
+	//Methods
+	void AddNode(uint32 index, const FileSystemNodeIndex& sourceIndex);
 
 	//Functions
 	static UniquePointer<Snapshot> Deserialize(const Path& path);
 
 private:
 	//Members
+	Path dirPath;
+	String name;
 	Snapshot* prev;
+	UniquePointer<FileSystemNodeIndex> index;
+	UniquePointer<FileSystem> fileSystem;
 };

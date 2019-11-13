@@ -20,7 +20,8 @@
 #include "SnapshotManager.hpp"
 
 //Constructor
-SnapshotManager::SnapshotManager(const Path &path, const Config &config, const StatusTracker &statusTracker) : backupPath(path)
+SnapshotManager::SnapshotManager(const Path &path, const Config &config, StaticThreadPool& threadPool, StatusTracker &statusTracker) : backupPath(path),
+	threadPool(threadPool), statusTracker(statusTracker)
 {
 	this->ReadInSnapshots();
 }
@@ -28,6 +29,31 @@ SnapshotManager::SnapshotManager(const Path &path, const Config &config, const S
 //Public methods
 void SnapshotManager::AddSnapshot(const FileSystemNodeIndex &index)
 {
+	const BinaryTreeSet<uint32> diffNodeIndices = this->ComputeDifference(index);
+	UniquePointer<Snapshot> snapshot = new Snapshot(this->backupPath);
+
+	const uint64 totalSize = index.ComputeTotalSize(diffNodeIndices);
+	ProcessStatus& process = this->statusTracker.AddProcessStatusTracker(u8"Creating snapshot: " + snapshot->Name(), index.GetNumberOfNodes(), totalSize);
+
+	for(uint32 i = 0; i < index.GetNumberOfNodes(); i++)
+	{
+		if(diffNodeIndices.Contains(i))
+		{
+			this->threadPool.EnqueueTask([&snapshot, i, &index, &process]()
+			{
+				snapshot->AddNode(i, index);
+				process.IncFinishedCount();
+			});
+		}
+		else
+		{
+			NOT_IMPLEMENTED_ERROR; //TODO: this should be a previous file but validate this!
+			process.IncFinishedCount();
+		}
+	}
+	this->threadPool.WaitForAllTasksToComplete();
+	process.Finished();
+
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
 }
 
