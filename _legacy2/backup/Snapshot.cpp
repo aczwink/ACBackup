@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -16,25 +16,18 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
-#include <Std++.hpp>
-using namespace StdXX;
-//Local
-#include "FileSystemNodeIndex.hpp"
 
-class OSFileSystemNodeIndex : public FileSystemNodeIndex
+//Public functions
+UniquePointer<Snapshot> Snapshot::Deserialize(const Path &path)
 {
-public:
-	//Constructor
-	OSFileSystemNodeIndex(const Path& path);
+	FileInputStream fileInputStream(path);
+	BufferedInputStream bufferedInputStream(fileInputStream);
+	UniquePointer<XML::Document> document = XML::Document::Parse(bufferedInputStream);
 
-	//Methods
-	UniquePointer<InputStream> OpenFile(const Path& filePath) const;
+	if(!document.IsNull())
+	{
+		NOT_IMPLEMENTED_ERROR; //TODO: implementme
+	}
 
-private:
-	//Members
-	Path basePath;
-
-	//Methods
-	void GenerateIndex();
-};
+	return nullptr;
+}

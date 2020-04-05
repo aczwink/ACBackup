@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -18,15 +18,33 @@
  */
 //Local
 #include "commands/Commands.hpp"
+#include "InjectionContainer.hpp"
+
+static void PrintManual()
+{
+    stdOut << u8"Usage: ACBackup [options...]" << endl
+            << endl
+
+            << u8"-a sourceDirectory, --add-snapshot sourceDirectory" << endl
+            << u8"  " << u8"Backup a new snapshot into backup directory. Verifies the snapshot after backup." << endl
+            << endl
+
+            << u8"-i, --init" << endl
+            << u8"  " << u8"Initialize new empty backup directory in current working directory." << endl
+            << endl;
+}
 
 int32 Main(const String& programName, const FixedArray<String>& args)
 {
-	//TODO debugging
-	CommandInit(OSFileSystem::GetInstance().GetWorkingDirectory());
-	CommandAddSnapshot(OSFileSystem::GetInstance().GetWorkingDirectory(), String(u8"/home/amir/Bilder"));
-	//restore-snapshot snapshot_2019-03-23_15_42_28 /Users/amir/Desktop/bla
-	//verify-snapshot snapshot_2019-03-22_14_27_28
-	//TODO end debugging
+    //TODO debugging
+	CommandInit(String(u8"/home/amir/opt"));
+	CommandAddSnapshot();
+    //TODO end debugging
 
-	return EXIT_SUCCESS;
+    PrintManual();
+
+	InjectionContainer::Instance().UnregisterAll();
+    return EXIT_FAILURE;
+
+    return EXIT_SUCCESS;
 }

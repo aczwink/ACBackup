@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -16,25 +16,8 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
 #include <Std++.hpp>
 using namespace StdXX;
-//Local
-#include "FileSystemNodeIndex.hpp"
 
-class OSFileSystemNodeIndex : public FileSystemNodeIndex
-{
-public:
-	//Constructor
-	OSFileSystemNodeIndex(const Path& path);
-
-	//Methods
-	UniquePointer<InputStream> OpenFile(const Path& filePath) const;
-
-private:
-	//Members
-	Path basePath;
-
-	//Methods
-	void GenerateIndex();
-};
+void UnprotectFile(const Path& filePath);
+void WriteProtectFile(const Path& filePath);

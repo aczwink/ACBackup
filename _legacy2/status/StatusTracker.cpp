@@ -16,24 +16,30 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
-#include <Std++.hpp>
-using namespace StdXX;
+//Class header
+#include "StatusTracker.hpp"
 
-class CompressionStatistics
+static StatusTracker* g_tracker = nullptr;
+static int32 NetworkThreadMain()
 {
-public:
-	//Constructor
-	CompressionStatistics() = default;
-	explicit CompressionStatistics(const Path& path);
+	stdOut << u8"Listening on 0.0.0.0:" << g_tracker->GetPort() << endl;
+	g_tracker->GetServer().Serve();
+	return EXIT_SUCCESS;
+}
 
-	//Methods
-	void Write(const Path& dirPath);
+//Constructor
+StatusTracker::StatusTracker(uint16 port) : httpServer(*this, port), thread(NetworkThreadMain)
+{
+	g_tracker = this;
+	this->thread.Start();
+}
 
-private:
-	//Constants
-	const String c_comprStatsFileName = u8"compression_stats.csv";
-
-	//Members
-	Map<String, float32> compressionStats;
-};
+//Destructor
+StatusTracker::~StatusTracker()
+{
+	Sleep(uint64(2) * 1000 * 1000 * 1000); //Wait so that status trackers can get the result
+	stdOut << u8"Shutting down server..." << endl;
+	this->httpServer.Shutdown();
+	this->thread.Join();
+	stdOut << u8"Server has been shut down!" << endl;
+}

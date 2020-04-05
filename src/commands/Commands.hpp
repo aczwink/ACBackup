@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -20,5 +20,5 @@
 using namespace StdXX;
 
 //Prototypes
-int32 CommandAddSnapshot(const Path& backupPath, const Path& sourcePath);
-int32 CommandInit(const Path& dirPath);
+int32 CommandAddSnapshot();
+int32 CommandInit(const Path& sourcePath);

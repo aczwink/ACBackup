@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -18,28 +18,16 @@
  */
 //Class header
 #include "StatusTracker.hpp"
+//Local
+#include "TerminalStatusTracker.hpp"
 
-static StatusTracker* g_tracker = nullptr;
-static int32 NetworkThreadMain()
+//Class functions
+StatusTracker *StatusTracker::CreateInstance(StatusTrackerType type)
 {
-	stdOut << u8"Listening on 0.0.0.0:" << g_tracker->GetPort() << endl;
-	g_tracker->GetServer().Serve();
-	return EXIT_SUCCESS;
-}
-
-//Constructor
-StatusTracker::StatusTracker(uint16 port) : httpServer(*this, port), thread(NetworkThreadMain)
-{
-	g_tracker = this;
-	this->thread.Start();
-}
-
-//Destructor
-StatusTracker::~StatusTracker()
-{
-	Sleep(uint64(2) * 1000 * 1000 * 1000); //Wait so that status trackers can get the result
-	stdOut << u8"Shutting down server..." << endl;
-	this->httpServer.Shutdown();
-	this->thread.Join();
-	stdOut << u8"Server has been shut down!" << endl;
+	switch(type)
+	{
+		case StatusTrackerType::Terminal:
+			return new TerminalStatusTracker;
+	}
+	return nullptr;
 }

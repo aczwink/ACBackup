@@ -16,36 +16,18 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <Std++.hpp>
-using namespace StdXX;
-//Local
-#include "../indexing/FileSystemNodeIndex.hpp"
-#include "Snapshot.hpp"
+//Class header
+#include "FileSystemNodeIndex.hpp"
 
-class SnapshotManager
+//Public methods
+uint64 FileSystemNodeIndex::ComputeTotalSize(const BinaryTreeSet<uint32>& nodeIndices) const
 {
-public:
-	//Constructor
-	SnapshotManager();
-
-	//Methods
-	void AddSnapshot(const OSFileSystemNodeIndex& sourceIndex);
-
-private:
-	//Members
-	DynamicArray<UniquePointer<Snapshot>> snapshots;
-
-	//Methods
-	BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& index);
-	DynamicArray<Path> ListPathsInIndexDirectory();
-	void ReadInSnapshots();
-	void VerifySnapshot(const Snapshot& snapshot) const;
-
-	//Inline
-	inline const FileSystemNodeIndex* LastIndex() const
+	uint64 totalSize = 0;
+	for(uint32 idx : nodeIndices)
 	{
-		if(this->snapshots.IsEmpty())
-			return nullptr;
-		return &this->snapshots.Last()->Index();
+		const FileSystemNodeAttributes& fileSystemNodeAttributes = this->GetNodeAttributes(idx);
+		totalSize += fileSystemNodeAttributes.Size();
 	}
-};
+
+	return totalSize;
+}

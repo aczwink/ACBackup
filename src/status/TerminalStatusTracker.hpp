@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -16,36 +16,25 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <Std++.hpp>
-using namespace StdXX;
 //Local
-#include "../indexing/FileSystemNodeIndex.hpp"
-#include "Snapshot.hpp"
+#include "StatusTracker.hpp"
 
-class SnapshotManager
+class TerminalStatusTracker : public StatusTracker
 {
 public:
 	//Constructor
-	SnapshotManager();
+	TerminalStatusTracker();
 
-	//Methods
-	void AddSnapshot(const OSFileSystemNodeIndex& sourceIndex);
+	//Destructor
+	~TerminalStatusTracker();
 
 private:
 	//Members
-	DynamicArray<UniquePointer<Snapshot>> snapshots;
+	bool running;
+	Thread reporterThread;
 
 	//Methods
-	BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& index);
-	DynamicArray<Path> ListPathsInIndexDirectory();
-	void ReadInSnapshots();
-	void VerifySnapshot(const Snapshot& snapshot) const;
-
-	//Inline
-	inline const FileSystemNodeIndex* LastIndex() const
-	{
-		if(this->snapshots.IsEmpty())
-			return nullptr;
-		return &this->snapshots.Last()->Index();
-	}
+	void PrintKnownEndTask(const ProcessStatus& processStatus);
+	void PrintUnknownEndTask(const ProcessStatus& processStatus);
+	int32 ThreadMain();
 };

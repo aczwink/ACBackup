@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -19,33 +19,21 @@
 #include <Std++.hpp>
 using namespace StdXX;
 //Local
-#include "../indexing/FileSystemNodeIndex.hpp"
-#include "Snapshot.hpp"
+#include "../Config.hpp"
 
-class SnapshotManager
+class FileSystemNodeAttributes
 {
 public:
-	//Constructor
-	SnapshotManager();
-
-	//Methods
-	void AddSnapshot(const OSFileSystemNodeIndex& sourceIndex);
-
-private:
-	//Members
-	DynamicArray<UniquePointer<Snapshot>> snapshots;
-
-	//Methods
-	BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& index);
-	DynamicArray<Path> ListPathsInIndexDirectory();
-	void ReadInSnapshots();
-	void VerifySnapshot(const Snapshot& snapshot) const;
-
-	//Inline
-	inline const FileSystemNodeIndex* LastIndex() const
+	inline FileSystemNodeAttributes(const AutoPointer<const Link>& link, const Path& target, const Config& config) : config(config)
 	{
-		if(this->snapshots.IsEmpty())
-			return nullptr;
-		return &this->snapshots.Last()->Index();
+		this->type = IndexableNodeType::Link;
+		this->target = target;
+		this->Init(link);
 	}
+
+protected:
+	//Members
+	const Config& config;
+
+	Path target; //only valid for links
 };

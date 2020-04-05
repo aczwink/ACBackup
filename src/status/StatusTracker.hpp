@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -17,25 +17,27 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
+#include <Std++.hpp>
+using namespace StdXX;
 //Local
-#include "StatusTrackerWebService.hpp"
 #include "ProcessStatus.hpp"
+
+enum class StatusTrackerType
+{
+	Terminal
+};
 
 class StatusTracker
 {
 public:
-	//Constructor
-	StatusTracker(uint16 port);
-
-	//Destructor
-	~StatusTracker();
+	virtual ~StatusTracker() = default;
 
 	//Inline
 	inline ProcessStatus& AddProcessStatusTracker(const String& title)
 	{
 		AutoLock lock(this->processesLock);
 
-		this->processes.InsertTail(new ProcessStatus(title));
+		this->processes.Push(new ProcessStatus(title));
 		return *this->processes.Last();
 	}
 
@@ -43,24 +45,43 @@ public:
 	{
 		AutoLock lock(this->processesLock);
 
-		this->processes.InsertTail(new ProcessStatus(title, nFiles, totalSize));
+		this->processes.Push(new ProcessStatus(title, nFiles, totalSize));
 		return *this->processes.Last();
 	}
 
-	inline uint16 GetPort() const
+	//Functions
+	static StatusTracker* CreateInstance(StatusTrackerType type);
+
+protected:
+	//Properties
+	inline auto& Processes() const
 	{
-		return this->httpServer.GetBoundPort();
+		return this->processes;
 	}
 
-	inline HTTPServer& GetServer()
+	//Inline
+	inline void AcquireProcesses()
 	{
-		return this->httpServer;
+		this->processesLock.Lock();
+	}
+
+	inline auto GetProcessesBegin() const
+	{
+		return this->processes.begin();
+	}
+
+	inline auto GetProcessesEnd() const
+	{
+		return this->processes.end();
+	}
+
+	inline void ReleaseProcesses()
+	{
+		this->processesLock.Unlock();
 	}
 
 private:
 	//Members
-	StatusTrackerWebService httpServer;
-	Thread thread;
-	LinkedList<UniquePointer<ProcessStatus>> processes;
+	DynamicArray<UniquePointer<ProcessStatus>> processes;
 	Mutex processesLock;
 };

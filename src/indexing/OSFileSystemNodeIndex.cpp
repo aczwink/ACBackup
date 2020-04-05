@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -19,54 +19,46 @@
 //Class header
 #include "OSFileSystemNodeIndex.hpp"
 //Local
-#include "LinkPointsOutOfIndexDirException.hpp"
+#include "../InjectionContainer.hpp"
+#include "../status/StatusTracker.hpp"
 
 //Constructor
-OSFileSystemNodeIndex::OSFileSystemNodeIndex(const Path &path, StatusTracker &tracker, const Config &config) : basePath(path), tracker(tracker)
+OSFileSystemNodeIndex::OSFileSystemNodeIndex(const Path &path) : basePath(path)
 {
-	this->GenerateIndex(config);
+	this->GenerateIndex();
+}
+
+//Public methods
+UniquePointer<InputStream> OSFileSystemNodeIndex::OpenFile(const Path &filePath) const
+{
+	return new FileInputStream(this->basePath.GetString() + filePath.GetString());
 }
 
 //Private methods
-void OSFileSystemNodeIndex::GenerateIndex(const Config &config)
+void OSFileSystemNodeIndex::GenerateIndex()
 {
+	InjectionContainer& ic = InjectionContainer::Instance();
+
 	auto dir = OSFileSystem::GetInstance().GetDirectory(this->basePath);
 	auto dirWalker = dir->WalkFiles();
 
-	//find files
-	ProcessStatus& findStatus = this->tracker.AddProcessStatusTracker(u8"Reading directory");
-	uint64 totalSize = 0;
+	ProcessStatus& findStatus = ic.Get<StatusTracker>().AddProcessStatusTracker(u8"Reading directory");
 	for(const Path& relPath : dirWalker)
 	{
 		AutoPointer<const FileSystemNode> node = OSFileSystem::GetInstance().GetNode(this->basePath / relPath);
+
 		UniquePointer<FileSystemNodeAttributes> attributes;
 		switch(node->GetType())
 		{
 			case FileSystemNodeType::File:
 			{
-				AutoPointer<const File> file = node.Cast<const File>();
-
-				attributes = new FileSystemNodeAttributes(file, config);
-				totalSize += attributes->Size();
+				FileSystemNodeAttributes *fileAttributes = new FileSystemNodeAttributes(node.Cast<const File>());
+				findStatus.AddTotalSize(fileAttributes->Size());
+				attributes = fileAttributes;
 			}
-				break;
+			break;
 			case FileSystemNodeType::Link:
-			{
-				AutoPointer<const Link> link = node.Cast<const Link>();
-				Path target = link->ReadTarget();
-
-				//check if target points out
-				Path absoluteTarget;
-				if(target.IsRelative())
-					absoluteTarget = this->basePath / relPath.GetParent() / target;
-				else
-					absoluteTarget = target;
-
-				if(!this->basePath.IsParentOf(absoluteTarget))
-					throw LinkPointsOutOfIndexDirException();
-
-				attributes = new FileSystemNodeAttributes(link, target, config);
-			}
+				NOT_IMPLEMENTED_ERROR; //TODO: implement me
 				break;
 			default:
 				RAISE(ErrorHandling::IllegalCodePathError);

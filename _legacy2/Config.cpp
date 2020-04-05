@@ -16,10 +16,6 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Class header
-#include "Config.hpp"
-//Namespaces
-using namespace StdXX::CommonFileFormats;
 
 //Constructor
 Config::Config()
@@ -29,16 +25,6 @@ Config::Config()
 
 Config::Config(const Path &dirPath)
 {
-	Path filePath = dirPath / this->GetDefaultConfigFileName();
-	FileInputStream file(filePath);
-	BufferedInputStream bufferedInputStream(file);
-	TextReader textReader(bufferedInputStream, TextCodecType::UTF8);
-
-	JsonValue cfg = CommonFileFormats::ParseHumanReadableJson(textReader);
-	ASSERT(cfg.Type() == JsonType::Object, u8"REPORT THIS PLEASE!");
-
-	const Map<String, JsonValue>& cfgMap = cfg.MapValue();
-
 	ASSERT(cfgMap.Contains(u8"port"), u8"REPORT THIS PLEASE!");
 	this->port = cfgMap[u8"port"].NumberValue();
 }
@@ -46,15 +32,5 @@ Config::Config(const Path &dirPath)
 //Public methods
 void Config::Write(const Path &dirPath)
 {
-	Path filePath = dirPath / this->GetDefaultConfigFileName();
-
-	FileOutputStream file(filePath);
-	BufferedOutputStream bufferedOutputStream(file);
-	TextWriter textWriter(bufferedOutputStream, TextCodecType::UTF8);
-
-	textWriter << u8"{" << endl;
 	this->WriteConfigValue(textWriter, 1, u8"port", this->port, u8"Port that the status tracking web service will listen on.");
-	textWriter << u8"}" << endl;
-
-	bufferedOutputStream.Flush();
 }

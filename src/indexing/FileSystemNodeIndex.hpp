@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -17,35 +17,32 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
+#include <Std++.hpp>
+using namespace StdXX;
 //Local
 #include "FileSystemNodeAttributes.hpp"
 
 class FileSystemNodeIndex
 {
 public:
+	//Methods
+	uint64 ComputeTotalSize(const BinaryTreeSet<uint32>& nodeIndices) const;
+
 	//Inline
 	inline void AddNode(const Path& path, UniquePointer<FileSystemNodeAttributes>&& attributes)
 	{
 		uint32 index = this->nodeAttributes.Push(Move(attributes));
-		this->pathMap.Insert(path, index);
-	}
-
-	inline uint64 ComputeTotalSize(const BinaryTreeSet<uint32>& nodeIndices) const
-	{
-		uint64 totalSize = 0;
-		for(uint32 idx : nodeIndices)
-		{
-			const FileSystemNodeAttributes& fileAttributes = this->GetNodeAttributes(idx);
-			if(fileAttributes.Type() == IndexableNodeType::File)
-				totalSize += fileAttributes.Size();
-		}
-
-		return totalSize;
+		this->pathMap.Insert(path.IsAbsolute() ? path : u8"/" + path.GetString(), index);
 	}
 
 	inline const FileSystemNodeAttributes& GetNodeAttributes(uint32 index) const
 	{
 		return *this->nodeAttributes[index];
+	}
+
+	inline uint32 GetNodeIndex(const Path& path) const
+	{
+		return this->pathMap.Get(path);
 	}
 
 	inline const Path& GetNodePath(uint32 index) const
@@ -58,8 +55,11 @@ public:
 		return this->nodeAttributes.GetNumberOfElements();
 	}
 
-private:
+protected:
 	//Members
 	DynamicArray<UniquePointer<FileSystemNodeAttributes>> nodeAttributes;
+
+private:
+	//Members
 	BijectiveMap<Path, uint32> pathMap;
 };

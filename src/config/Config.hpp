@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -16,25 +16,20 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
-#include <Std++.hpp>
-using namespace StdXX;
-//Local
-#include "FileSystemNodeIndex.hpp"
+#include "../status/StatusTracker.hpp"
 
-class OSFileSystemNodeIndex : public FileSystemNodeIndex
+struct Config
 {
-public:
-	//Constructor
-	OSFileSystemNodeIndex(const Path& path);
+	Path backupPath;
+	Path dataPath;
+	Path indexPath;
+	Path sourcePath;
 
-	//Methods
-	UniquePointer<InputStream> OpenFile(const Path& filePath) const;
-
-private:
-	//Members
-	Path basePath;
-
-	//Methods
-	void GenerateIndex();
+	uint32 blockSize;
+	uint64 volumeSize;
+	CompressionStreamFormatType compressionStreamFormatType;
+	CompressionAlgorithm compressionAlgorithm;
+	uint8 maxCompressionLevel;
+	Crypto::HashAlgorithm hashAlgorithm;
+	StatusTrackerType statusTrackerType;
 };

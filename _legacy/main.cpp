@@ -6,17 +6,6 @@
 static void PrintManual()
 {
 	stdOut << u8"Usage: ACBackup command [args...] [options...]" << endl
-		   << endl
-		   << u8"command: add-snapshot" << endl
-		   << u8"Backup a new snapshot into backup directory. Verifies the snapshot after backup." << endl
-		   << u8"Args: source directory" << endl
-		   << endl
-
-		   << u8"command: init" << endl
-		   << u8"Initialize new empty backup directory in current working directory." << endl
-		   << u8"Args: none" << endl
-		   << endl
-
 		   << u8"command: restore-snapshot" << endl
 		   << u8"Restore a snapshot to a given location." << endl
 		   << u8"Args: snapshot name and target location in that order" << endl
@@ -208,7 +197,5 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 	else
 	{
 		stdErr << u8"Unknown command" << endl;
-		PrintManual();
-		return EXIT_FAILURE;
 	}
 }

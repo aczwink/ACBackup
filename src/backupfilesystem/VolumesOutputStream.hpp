@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -18,34 +18,31 @@
  */
 #include <Std++.hpp>
 using namespace StdXX;
-//Local
-#include "../indexing/FileSystemNodeIndex.hpp"
-#include "Snapshot.hpp"
 
-class SnapshotManager
+//Forward declarations
+class FlatVolumesFileSystem;
+
+class VolumesOutputStream : public OutputStream
 {
 public:
 	//Constructor
-	SnapshotManager();
+	VolumesOutputStream(FlatVolumesFileSystem &fileSystem, const Path& path);
+
+	//Destructor
+	~VolumesOutputStream();
+
+	//Properties
+	inline const class Path& Path() const
+	{
+		return this->path;
+	}
 
 	//Methods
-	void AddSnapshot(const OSFileSystemNodeIndex& sourceIndex);
+	void Flush() override;
+	uint32 WriteBytes(const void *source, uint32 size) override;
 
 private:
 	//Members
-	DynamicArray<UniquePointer<Snapshot>> snapshots;
-
-	//Methods
-	BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& index);
-	DynamicArray<Path> ListPathsInIndexDirectory();
-	void ReadInSnapshots();
-	void VerifySnapshot(const Snapshot& snapshot) const;
-
-	//Inline
-	inline const FileSystemNodeIndex* LastIndex() const
-	{
-		if(this->snapshots.IsEmpty())
-			return nullptr;
-		return &this->snapshots.Last()->Index();
-	}
+	FlatVolumesFileSystem& fileSystem;
+	const class Path& path;
 };

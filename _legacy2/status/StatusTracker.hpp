@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -16,25 +16,30 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
-#include <Std++.hpp>
-using namespace StdXX;
 //Local
-#include "FileSystemNodeIndex.hpp"
+#include "StatusTrackerWebService.hpp"
+#include "ProcessStatus.hpp"
 
-class OSFileSystemNodeIndex : public FileSystemNodeIndex
+class StatusTracker
 {
 public:
 	//Constructor
-	OSFileSystemNodeIndex(const Path& path);
+	StatusTracker(uint16 port);
 
-	//Methods
-	UniquePointer<InputStream> OpenFile(const Path& filePath) const;
+	//Destructor
+	~StatusTracker();
 
-private:
-	//Members
-	Path basePath;
+	inline uint16 GetPort() const
+	{
+		return this->httpServer.GetBoundPort();
+	}
 
-	//Methods
-	void GenerateIndex();
+	inline HTTPServer& GetServer()
+	{
+		return this->httpServer;
+	}
+
+
+	StatusTrackerWebService httpServer;
+	Thread thread;
 };

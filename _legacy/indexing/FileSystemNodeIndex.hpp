@@ -9,9 +9,6 @@ public:
 	//Destructor
 	virtual ~FileSystemNodeIndex() {}
 
-	//Abstract
-	virtual uint32 FindNodeIndex(const Path& path) const = 0;
-
 	//Methods
 	/**
 	 * Returns the indices from this index that are different from other

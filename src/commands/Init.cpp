@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -17,29 +17,80 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <Std++.hpp>
-using namespace StdXX;
 //Local
-#include "../Config.hpp"
-#include "../CompressionStatistics.hpp"
+#include "../config/CompressionStatistics.hpp"
+#include "../config/ConfigManager.hpp"
+
+using namespace StdXX;
+
+static void AddIncompressibleFileExtensions(CompressionStatistics& compressionStatistics)
+{
+    const String exts[] =
+    {
+        //archives
+        u8"7z",
+        u8"cab",
+        u8"gz",
+        u8"rar",
+        u8"zip",
+
+        //audio
+        u8"m4a",
+        u8"mp3",
+
+        //images
+        u8"jpeg", u8"jpg",
+
+        //video
+        u8"avi",
+        u8"bik",
+        u8"flv",
+        u8"m2ts",
+        u8"mkv",
+        u8"mpg",
+        u8"mov",
+        u8"mp4",
+        u8"msi",
+        u8"webm",
+        u8"wmv",
+        u8"vob",
+    };
+
+    for(const String& ext : exts)
+    {
+        compressionStatistics.SetAsIncompressible(ext);
+    }
+}
 
 static bool IsDirectoryEmpty(const Path& dirPath)
 {
-	auto dir = OSFileSystem::GetInstance().GetDirectory(dirPath);
-	return dir->IsEmpty();
+    auto dir = OSFileSystem::GetInstance().GetDirectory(dirPath);
+    return dir->IsEmpty();
 }
 
-int32 CommandInit(const Path& dirPath)
+int32 CommandInit(const Path& sourcePath)
 {
-	//check if dir is empty
-	if (!IsDirectoryEmpty(dirPath))
-	{
-		stdErr << u8"Directory is not empty. Can not create backup dir here..." << endl;
-		return EXIT_FAILURE;
-	}
+	ConfigManager c(sourcePath);
 
-	Config c;
-	c.Write(dirPath);
+	const Path &backupPath = c.Config().backupPath;
 
-	CompressionStatistics compressionStatistics;
-	compressionStatistics.Write(dirPath);
+    //check if dir is empty
+	if (!IsDirectoryEmpty(backupPath))
+    {
+        stdErr << u8"Directory is not empty. Can not create backup dir here..." << endl;
+        return EXIT_FAILURE;
+    }
+    
+    c.Write(backupPath);
+
+    CompressionStatistics compressionStatistics;
+    AddIncompressibleFileExtensions(compressionStatistics);
+    compressionStatistics.Write(backupPath);
+
+    //create dirs
+	auto dir = OSFileSystem::GetInstance().GetDirectory(backupPath);
+	OSFileSystem::GetInstance().CreateDirectoryTree(c.Config().dataPath);
+	OSFileSystem::GetInstance().CreateDirectoryTree(c.Config().indexPath);
+
+    return EXIT_SUCCESS;
 }

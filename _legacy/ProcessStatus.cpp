@@ -18,6 +18,8 @@
  */
 //Class header
 #include "ProcessStatus.hpp"
+#include "../src/status/ProcessStatus.hpp"
+
 //Namespaces
 using namespace StdXX::CommonFileFormats;
 
@@ -28,11 +30,7 @@ JsonValue ProcessStatus::ToJSON() const
 
 	AutoLock lock(this->mutex);
 
-	uint64 duration_microsecs;
-	if(this->endTime.HasValue())
-		duration_microsecs = this->totalTaskDuration;
-	else
-		duration_microsecs = this->clock.GetElapsedMicroseconds();
+	uint64 duration_microsecs = this->GetDurationInMicroseconds();
 
 	obj[u8"title"] = this->title;
 	obj[u8"nFinishedFiles"] = this->nFinishedFiles;
@@ -50,17 +48,7 @@ JsonValue ProcessStatus::ToJSON() const
 		obj[u8"endTime"] = this->endTime->ToISOString();
 	else
 	{
-		if(this->isEndDeterminate && (duration_microsecs > 0))
-		{
-			uint64 leftSize = this->totalSize - this->doneSize;
-			float64 speed = this->doneSize / (duration_microsecs / 1000.0);
-
-			uint64 passed = duration_microsecs / 1000;
-			uint64 leftTime = static_cast<uint64>(leftSize / speed);
-			obj[u8"expectedEndTime"] = this->startTime.AddMilliSeconds(passed + leftTime).ToISOString();
-		}
-		else
-			obj[u8"expectedEndTime"] = u8"?";
+		obj[u8"expectedEndTime"] = this->GetExpectedEndTimeAsString();
 	}
 
 	return obj;

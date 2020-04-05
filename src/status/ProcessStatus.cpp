@@ -16,36 +16,22 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <Std++.hpp>
-using namespace StdXX;
-//Local
-#include "../indexing/FileSystemNodeIndex.hpp"
-#include "Snapshot.hpp"
+//Class header
+#include "ProcessStatus.hpp"
 
-class SnapshotManager
+//Public methods
+Optional <DateTime> ProcessStatus::ComputeExpectedEndTime() const
 {
-public:
-	//Constructor
-	SnapshotManager();
-
-	//Methods
-	void AddSnapshot(const OSFileSystemNodeIndex& sourceIndex);
-
-private:
-	//Members
-	DynamicArray<UniquePointer<Snapshot>> snapshots;
-
-	//Methods
-	BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& index);
-	DynamicArray<Path> ListPathsInIndexDirectory();
-	void ReadInSnapshots();
-	void VerifySnapshot(const Snapshot& snapshot) const;
-
-	//Inline
-	inline const FileSystemNodeIndex* LastIndex() const
+	uint64 duration_microsecs = this->GetDurationInMicroseconds();
+	if(this->isEndDeterminate && (duration_microsecs > 0))
 	{
-		if(this->snapshots.IsEmpty())
-			return nullptr;
-		return &this->snapshots.Last()->Index();
+		uint64 leftSize = this->totalSize - this->doneSize;
+		float64 speed = this->doneSize / (duration_microsecs / 1000.0);
+
+		uint64 passed = duration_microsecs / 1000;
+		uint64 leftTime = static_cast<uint64>(leftSize / speed);
+
+		return this->startTime.AddMilliSeconds(passed + leftTime);
 	}
-};
+	return {};
+}

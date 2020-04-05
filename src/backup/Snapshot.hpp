@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -19,13 +19,22 @@
 #include <Std++.hpp>
 using namespace StdXX;
 //Local
-#include "../indexing/FileSystemNodeIndex.hpp"
+#include "BackupNodeIndex.hpp"
+#include "../status/ProcessStatus.hpp"
+#include "../indexing/OSFileSystemNodeIndex.hpp"
+#include "../Util.hpp"
+#include "../config/ConfigManager.hpp"
+#include "../InjectionContainer.hpp"
+#include "../backupfilesystem/FlatVolumesFileSystem.hpp"
+
+//Constants
+static const char *const c_hashFileSuffix = u8"_hash.json";
 
 class Snapshot
 {
 public:
 	//Constructor
-	Snapshot(const Path& path);
+	Snapshot();
 
 	//Properties
 	inline const FileSystemNodeIndex& Index() const
@@ -44,16 +53,46 @@ public:
 	}
 
 	//Methods
-	void AddNode(uint32 index, const FileSystemNodeIndex& sourceIndex);
+	void AddNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex, ProcessStatus& processStatus);
+	void Serialize() const;
 
 	//Functions
 	static UniquePointer<Snapshot> Deserialize(const Path& path);
 
+	//Inline
+	inline void WriteProtect()
+	{
+		WriteProtectFile(this->IndexFilePath());
+		WriteProtectFile(this->IndexHashFilePath());
+
+		this->fileSystem->WriteProtect();
+	}
+
 private:
 	//Members
-	Path dirPath;
 	String name;
+	UniquePointer<BackupNodeIndex> index;
 	Snapshot* prev;
-	UniquePointer<FileSystemNodeIndex> index;
-	UniquePointer<FileSystem> fileSystem;
+	UniquePointer<FlatVolumesFileSystem> fileSystem;
+
+	//Constructor
+	Snapshot(const String& name, Serialization::XmlDeserializer& xmlDeserializer);
+
+	//Properties
+	inline Path IndexFilePath() const
+	{
+		return this->PathPrefix() + String(u8".lzma");
+	}
+
+	inline Path IndexHashFilePath() const
+	{
+		return this->PathPrefix() + String(c_hashFileSuffix);
+	}
+
+	inline Path PathPrefix() const
+	{
+		ConfigManager& configManager = InjectionContainer::Instance().Get<ConfigManager>();
+		const Config &config = configManager.Config();
+		return config.indexPath / this->name + String(u8".xml");
+	}
 };

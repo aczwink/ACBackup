@@ -16,8 +16,6 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Class header
-#include "BackupNodeAttributes.hpp"
 
 //Private methods
 void BackupNodeAttributes::ConfigureCompression(float32 compressionRate)

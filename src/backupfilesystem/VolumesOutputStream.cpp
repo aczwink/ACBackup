@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -16,25 +16,30 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
-#include <Std++.hpp>
-using namespace StdXX;
+//Class header
+#include "VolumesOutputStream.hpp"
 //Local
-#include "FileSystemNodeIndex.hpp"
+#include "FlatVolumesFileSystem.hpp"
 
-class OSFileSystemNodeIndex : public FileSystemNodeIndex
+//Constructor
+VolumesOutputStream::VolumesOutputStream(FlatVolumesFileSystem &fileSystem, const StdXX::Path& path) : fileSystem(fileSystem), path(path)
 {
-public:
-	//Constructor
-	OSFileSystemNodeIndex(const Path& path);
+}
 
-	//Methods
-	UniquePointer<InputStream> OpenFile(const Path& filePath) const;
+//Destructor
+VolumesOutputStream::~VolumesOutputStream()
+{
+	this->fileSystem.CloseFile(*this);
+}
 
-private:
-	//Members
-	Path basePath;
+//Public methods
+void VolumesOutputStream::Flush()
+{
+	//this stream always flushes
+}
 
-	//Methods
-	void GenerateIndex();
-};
+uint32 VolumesOutputStream::WriteBytes(const void *source, uint32 size)
+{
+	this->fileSystem.WriteBytes(*this, source, size);
+	return size;
+}

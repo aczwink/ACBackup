@@ -18,34 +18,27 @@
  */
 #include <Std++.hpp>
 using namespace StdXX;
-//Local
-#include "../indexing/FileSystemNodeIndex.hpp"
-#include "Snapshot.hpp"
 
-class SnapshotManager
+class CompressionStatistics
 {
 public:
-	//Constructor
-	SnapshotManager();
+	//Constructors
+	CompressionStatistics() = default;
+	explicit CompressionStatistics(const Path& path);
 
-	//Methods
-	void AddSnapshot(const OSFileSystemNodeIndex& sourceIndex);
+    //Methods
+    void Write(const Path& dirPath);
+
+    //Inline
+    inline void SetAsIncompressible(const String& extension)
+    {
+        this->compressionStats[extension] = 1;
+    }
 
 private:
-	//Members
-	DynamicArray<UniquePointer<Snapshot>> snapshots;
+    //Constants
+    const String c_comprStatsFileName = u8"compression_stats.csv";
 
-	//Methods
-	BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& index);
-	DynamicArray<Path> ListPathsInIndexDirectory();
-	void ReadInSnapshots();
-	void VerifySnapshot(const Snapshot& snapshot) const;
-
-	//Inline
-	inline const FileSystemNodeIndex* LastIndex() const
-	{
-		if(this->snapshots.IsEmpty())
-			return nullptr;
-		return &this->snapshots.Last()->Index();
-	}
+    //Members
+    Map<String, float32> compressionStats;
 };

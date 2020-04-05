@@ -16,36 +16,20 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <Std++.hpp>
-using namespace StdXX;
-//Local
-#include "../indexing/FileSystemNodeIndex.hpp"
-#include "Snapshot.hpp"
+//Class header
+#include "BackupNodeAttributes.hpp"
 
-class SnapshotManager
+//Public methods
+void BackupNodeAttributes::AddBlock(const Block &block)
 {
-public:
-	//Constructor
-	SnapshotManager();
-
-	//Methods
-	void AddSnapshot(const OSFileSystemNodeIndex& sourceIndex);
-
-private:
-	//Members
-	DynamicArray<UniquePointer<Snapshot>> snapshots;
-
-	//Methods
-	BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& index);
-	DynamicArray<Path> ListPathsInIndexDirectory();
-	void ReadInSnapshots();
-	void VerifySnapshot(const Snapshot& snapshot) const;
-
-	//Inline
-	inline const FileSystemNodeIndex* LastIndex() const
+	if(!this->blocks.IsEmpty())
 	{
-		if(this->snapshots.IsEmpty())
-			return nullptr;
-		return &this->snapshots.Last()->Index();
+		Block& lastBlock = this->blocks.Last();
+		if( (lastBlock.volumeNumber == block.volumeNumber) && ((lastBlock.offset + lastBlock.size) == block.offset) )
+		{
+			lastBlock.size += block.size;
+			return;
+		}
 	}
-};
+	this->blocks.Push(block);
+}

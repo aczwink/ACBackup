@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -17,24 +17,17 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#include <Std++.hpp>
-using namespace StdXX;
-//Local
-#include "FileSystemNodeIndex.hpp"
 
-class OSFileSystemNodeIndex : public FileSystemNodeIndex
+class Config
 {
 public:
-	//Constructor
-	OSFileSystemNodeIndex(const Path& path);
-
-	//Methods
-	UniquePointer<InputStream> OpenFile(const Path& filePath) const;
+	//Properties
+	inline uint16 Port() const
+	{
+		return this->port;
+	}
 
 private:
 	//Members
-	Path basePath;
-
-	//Methods
-	void GenerateIndex();
+	uint16 port;
 };

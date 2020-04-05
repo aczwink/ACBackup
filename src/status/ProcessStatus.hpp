@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -23,7 +23,7 @@ using namespace StdXX;
 class ProcessStatus
 {
 public:
-	//Constructor
+	//Constructors
 	inline ProcessStatus(const String& title)
 			: title(title), startTime(DateTime::Now())
 	{
@@ -46,12 +46,82 @@ public:
 		this->clock.Start();
 	}
 
+	//Methods
+	Optional<DateTime> ComputeExpectedEndTime() const;
+
+	//Properties
+	inline uint64 DoneSize() const
+	{
+		return this->doneSize;
+	}
+
+	inline const Optional<DateTime> EndTime() const
+	{
+		return this->endTime;
+	}
+
+	inline bool IsEndDeterminate() const
+	{
+		return this->isEndDeterminate;
+	}
+
+	inline uint32 NumberOfFiles() const
+	{
+		return this->nFiles;
+	}
+
+	inline uint32 NumberOfFinishedFiles() const
+	{
+		return this->nFinishedFiles;
+	}
+
+	inline const DateTime& StartTime() const
+	{
+		return this->startTime;
+	}
+
+	inline const String& Title() const
+	{
+		return this->title;
+	}
+
+	inline uint64 TotalSize() const
+	{
+		return this->totalSize;
+	}
+
 	//Inline
+	inline void AddFinishedSize(uint64 size)
+	{
+		AutoLock lock(this->mutex);
+		this->doneSize += size;
+	}
+
+	inline void AddTotalSize(uint64 size)
+	{
+		this->totalSize += size;
+	}
+
+	inline String ComputeExpectedEndTimeAsString() const
+	{
+		if(this->isEndDeterminate && (this->GetDurationInMicroseconds() > 0))
+			return this->ComputeExpectedEndTime()->ToISOString();
+		return u8"???";
+	}
+
 	inline void Finished()
 	{
 		AutoLock lock(this->mutex);
 		this->endTime = DateTime::Now();
 		this->totalTaskDuration = this->clock.GetElapsedMicroseconds();
+	}
+
+	inline uint64 GetDurationInMicroseconds() const
+	{
+		if(this->endTime.HasValue())
+			return this->totalTaskDuration;
+
+		return this->clock.GetElapsedMicroseconds();
 	}
 
 	inline void IncFileCount()

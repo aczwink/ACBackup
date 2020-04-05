@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -19,22 +19,29 @@
 #include <Std++.hpp>
 using namespace StdXX;
 //Local
-#include "../Config.hpp"
+#include "../indexing/OSFileSystemNodeIndex.hpp"
 #include "../status/StatusTracker.hpp"
 #include "../backup/SnapshotManager.hpp"
-#include "../indexing/OSFileSystemNodeIndex.hpp"
-#include "../CompressionStatistics.hpp"
+#include "../config/CompressionStatistics.hpp"
 
-int32 CommandAddSnapshot(const Path& backupPath, const Path& sourcePath)
+int32 CommandAddSnapshot()
 {
-	Config config(backupPath);
-	CompressionStatistics statistics(backupPath);
+	InjectionContainer& ic = InjectionContainer::Instance();
+
+	ConfigManager configManager;
+	ic.Register(configManager);
+
+	CompressionStatistics compressionStatistics(configManager.Config().backupPath);
+	ic.Register(compressionStatistics);
+
+	UniquePointer<StatusTracker> statusTracker = StatusTracker::CreateInstance(configManager.Config().statusTrackerType);
+	ic.Register(*statusTracker);
 
 	StaticThreadPool threadPool;
-	StatusTracker tracker(config.Port());
-	SnapshotManager snapshotManager(backupPath, config, threadPool, tracker);
+	ic.Register(threadPool);
 
-	OSFileSystemNodeIndex sourceIndex(sourcePath, tracker, config);
+	SnapshotManager snapshotManager;
+	OSFileSystemNodeIndex sourceIndex(configManager.Config().sourcePath);
 	snapshotManager.AddSnapshot(sourceIndex);
 
 	return EXIT_SUCCESS;

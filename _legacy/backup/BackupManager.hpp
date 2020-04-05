@@ -12,9 +12,6 @@ public:
 	void RestoreSnapshot(const Snapshot& snapshot, const Path& targetPath, StatusTracker& tracker) const;
 	void VerifySnapshot(const Snapshot& snapshot, StatusTracker& tracker) const;
 
-	//Functions
-	static void WriteCompressionStatsFile(const Path& path, const Map<String, float32>& compressionStats);
-
 	//Inline
 	inline bool RestoreSnapshot(const String& snapshotName, const Path& targetPath, StatusTracker& tracker) const
 	{
@@ -45,12 +42,10 @@ public:
 private:
 	//Members
 	const Config& config;
-	Map<String, float32> compressionStats;
 	Mutex compressionStatsLock;
 	Optional<EncryptionInfo> encryptionInfo;
 
 	void AddCompressionRateSample(const String& fileExtension, float32 compressionRate);
-	void DropSnapshots();
 	float32 GetCompressionRate(const String& fileExtension);
 
 	//Inline

@@ -16,9 +16,6 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Local
-#include "../indexing/FileSystemNodeAttributes.hpp"
-
 class BackupNodeAttributes : public FileSystemNodeAttributes
 {
 public:

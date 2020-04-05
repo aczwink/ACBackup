@@ -16,40 +16,17 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#pragma once
-#include <Std++.hpp>
-using namespace StdXX;
+//Local
+#include "../status/StatusTracker.hpp"
+#include "../Config.hpp"
+#include "FileSystemNodeIndex.hpp"
 
-class Config
+class OSFileSystemNodeIndex : public FileSystemNodeIndex
 {
 public:
-	//Constructors
-	Config();
-	Config(const Path& dirPath);
-
-	//Properties
-	inline uint16 Port() const
-	{
-		return this->port;
-	}
-
-	//Methods
-	void Write(const Path& dirPath);
+	//Constructor
+	OSFileSystemNodeIndex(const Path& path, StatusTracker& tracker, const Config& config);
 
 private:
-	//Members
-	uint16 port;
-
-	//Inline
-	inline String GetDefaultConfigFileName() const
-	{
-		return u8"bkpconfig.json";
-	}
-
-	template<typename T>
-	inline void WriteConfigValue(TextWriter& textWriter, uint16 nTabs, const String& key, T value, const String& comment) const
-	{
-		textWriter.WriteTabs(nTabs);
-		textWriter << u8"\"" << key << "\": " << value << u8", //" << comment << endl;
-	}
+	StatusTracker& tracker;
 };

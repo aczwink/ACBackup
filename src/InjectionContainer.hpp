@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -16,36 +16,43 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <typeindex>
+
 #include <Std++.hpp>
 using namespace StdXX;
-//Local
-#include "../indexing/FileSystemNodeIndex.hpp"
-#include "Snapshot.hpp"
 
-class SnapshotManager
+class InjectionContainer
 {
 public:
-	//Constructor
-	SnapshotManager();
+	//Inline
+	template<typename T>
+	inline T& Get()
+	{
+		return *(T*)this->instances[typeid(T)];
+	}
 
-	//Methods
-	void AddSnapshot(const OSFileSystemNodeIndex& sourceIndex);
+	template<typename T>
+	inline void Register(T& instance)
+	{
+		this->instances[typeid(T)] = &instance;
+	}
+
+	inline void UnregisterAll()
+	{
+		this->instances.Release();
+	}
+
+	//Static
+	inline static InjectionContainer& Instance()
+	{
+		static InjectionContainer instance;
+		return instance;
+	}
 
 private:
 	//Members
-	DynamicArray<UniquePointer<Snapshot>> snapshots;
+	Map<std::type_index, void*> instances;
 
-	//Methods
-	BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& index);
-	DynamicArray<Path> ListPathsInIndexDirectory();
-	void ReadInSnapshots();
-	void VerifySnapshot(const Snapshot& snapshot) const;
-
-	//Inline
-	inline const FileSystemNodeIndex* LastIndex() const
-	{
-		if(this->snapshots.IsEmpty())
-			return nullptr;
-		return &this->snapshots.Last()->Index();
-	}
+	//Constructor
+	InjectionContainer() = default;
 };

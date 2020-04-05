@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -18,34 +18,22 @@
  */
 #include <Std++.hpp>
 using namespace StdXX;
-//Local
-#include "../indexing/FileSystemNodeIndex.hpp"
-#include "Snapshot.hpp"
 
-class SnapshotManager
+class ConfigException : public Exception
 {
 public:
 	//Constructor
-	SnapshotManager();
+	inline ConfigException(const String& message) : message(message)
+	{
+	}
 
-	//Methods
-	void AddSnapshot(const OSFileSystemNodeIndex& sourceIndex);
+	//Public methods
+	String Description() const override
+	{
+		return this->message;
+	}
 
 private:
 	//Members
-	DynamicArray<UniquePointer<Snapshot>> snapshots;
-
-	//Methods
-	BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& index);
-	DynamicArray<Path> ListPathsInIndexDirectory();
-	void ReadInSnapshots();
-	void VerifySnapshot(const Snapshot& snapshot) const;
-
-	//Inline
-	inline const FileSystemNodeIndex* LastIndex() const
-	{
-		if(this->snapshots.IsEmpty())
-			return nullptr;
-		return &this->snapshots.Last()->Index();
-	}
+	String message;
 };

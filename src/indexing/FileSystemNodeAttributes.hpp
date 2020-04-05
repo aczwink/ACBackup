@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -19,8 +19,6 @@
 #pragma once
 #include <Std++.hpp>
 using namespace StdXX;
-//Local
-#include "../Config.hpp"
 
 enum class IndexableNodeType
 {
@@ -32,24 +30,30 @@ class FileSystemNodeAttributes
 {
 public:
 	//Constructors
-	inline FileSystemNodeAttributes(const AutoPointer<const File>& file, const Config& config) : config(config)
+	inline FileSystemNodeAttributes(IndexableNodeType type, uint64 size, const Optional<DateTime>& lastModifiedTime)
+	{
+		this->type = type;
+		this->size = size;
+		this->lastModifiedTime = lastModifiedTime;
+	}
+
+	inline FileSystemNodeAttributes(const AutoPointer<const File>& file)
 	{
 		this->type = IndexableNodeType::File;
 		this->Init(file);
 		this->size = file->GetSize();
 	}
 
-	inline FileSystemNodeAttributes(const AutoPointer<const Link>& link, const Path& target, const Config& config) : config(config)
-	{
-		this->type = IndexableNodeType::Link;
-		this->target = target;
-		this->Init(link);
-	}
+	FileSystemNodeAttributes(const FileSystemNodeAttributes& attributes) = default; //copy ctor
 
 	//Properties
+	inline const Optional<DateTime>& LastModifiedTime() const
+	{
+		return this->lastModifiedTime;
+	}
+
 	inline uint64 Size() const
 	{
-		ASSERT(this->type == IndexableNodeType::File, u8"Only files have a size!");
 		return this->size;
 	}
 
@@ -58,16 +62,11 @@ public:
 		return this->type;
 	}
 
-protected:
-	//Members
-	const Config& config;
-
 private:
 	//Members
 	IndexableNodeType type;
+	uint64 size;
 	Optional<DateTime> lastModifiedTime;
-	uint64 size; //only valid for files
-	Path target; //only valid for links
 
 	//Inline
 	inline void Init(const AutoPointer<const FileSystemNode>& node)

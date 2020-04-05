@@ -89,8 +89,6 @@ void BackupManager::AddSnapshot(const FileSystemNodeIndex &index, StatusTracker&
 						float32 compressionRate = this->GetCompressionRate(ext);
 						compressionRate = snapshot->BackupFile(filePath, index, compressionRate, maxCompressionLevel, memLimit);
 						this->AddCompressionRateSample(ext, compressionRate);
-
-						process.AddFinishedSize(fileAttributes.Size());
 					}
 					break;
 					case IndexableNodeType::Link:
@@ -100,20 +98,6 @@ void BackupManager::AddSnapshot(const FileSystemNodeIndex &index, StatusTracker&
 			});
 		}
 	}
-
-	NOT_IMPLEMENTED_ERROR; //TODO: WHAT FOLLOWS IS LEGACY CODE
-
-	/*
-	snapshot->Serialize(this->encryptionInfo);
-
-	//close snapshot and read it in again
-	snapshot = nullptr;
-	this->DropSnapshots();
-
-	//deserialize and verify
-	this->ReadInSnapshots();
-	this->VerifySnapshot(this->snapshots.Last(), tracker);
-	*/
 }
 
 void BackupManager::RestoreSnapshot(const Snapshot &snapshot, const Path &targetPath, StatusTracker &tracker) const
@@ -198,22 +182,6 @@ void BackupManager::VerifySnapshot(const Snapshot &snapshot, StatusTracker& trac
 	}
 }
 
-//Class functions
-void BackupManager::WriteCompressionStatsFile(const Path &path, const Map<String, float32>& compressionStats)
-{
-	FileOutputStream compr(path / String(c_comprStatsFileName), true);
-	BufferedOutputStream bufferedOutputStream(compr);
-
-	CommonFileFormats::CSVWriter csvWriter(bufferedOutputStream, CommonFileFormats::csvDialect_excel);
-	csvWriter << u8"File extension" << u8"Compression rate" << endl;
-	for(const auto& kv : compressionStats)
-	{
-		csvWriter << kv.key << kv.value << endl;
-	}
-
-	bufferedOutputStream.Flush();
-}
-
 //Private methods
 void BackupManager::AddCompressionRateSample(const String &fileExtension, float32 compressionRate)
 {
@@ -223,13 +191,6 @@ void BackupManager::AddCompressionRateSample(const String &fileExtension, float3
 
 	String extLower = fileExtension.ToLowercase();
 	this->compressionStats[extLower] = (this->compressionStats[extLower] + compressionRate) / 2.0f;
-}
-
-void BackupManager::DropSnapshots()
-{
-	BackupManager::WriteCompressionStatsFile(this->backupPath, this->compressionStats);
-
-	this->snapshots.Release();
 }
 
 float32 BackupManager::GetCompressionRate(const String &fileExtension)

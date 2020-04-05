@@ -5,8 +5,6 @@
 class FileSystemNodeAttributes
 {
 public:
-	FileSystemNodeAttributes(const FileSystemNodeAttributes& attributes) = default; //copy ctor
-
 	//Overrideable operators
 	virtual bool operator==(const FileSystemNodeAttributes& rhs) const;
 

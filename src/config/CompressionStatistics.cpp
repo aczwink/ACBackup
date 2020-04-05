@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -50,16 +50,17 @@ CompressionStatistics::CompressionStatistics(const Path &path)
 //Public methods
 void CompressionStatistics::Write(const Path &dirPath)
 {
-	FileOutputStream fileOutputStream(dirPath / this->c_comprStatsFileName);
-	BufferedOutputStream bufferedOutputStream(fileOutputStream);
-	CommonFileFormats::CSVWriter csvWriter(bufferedOutputStream, CommonFileFormats::csvDialect_excel);
+    FileOutputStream fileOutputStream(dirPath / this->c_comprStatsFileName, true);
+    BufferedOutputStream bufferedOutputStream(fileOutputStream);
+    CommonFileFormats::CSVWriter csvWriter(bufferedOutputStream, CommonFileFormats::csvDialect_excel);
 
-	for(const auto& kv: this->compressionStats)
-	{
-		csvWriter.WriteCell(kv.key);
-		csvWriter.WriteCell(String::Number(kv.value));
-		csvWriter.TerminateRow();
-	}
+    csvWriter << u8"File extension" << u8"Compression rate" << endl;
+    for(const auto& kv: this->compressionStats)
+    {
+        csvWriter.WriteCell(kv.key);
+        csvWriter.WriteCell(String::Number(kv.value));
+        csvWriter.TerminateRow();
+    }
 
-	bufferedOutputStream.Flush();
+    bufferedOutputStream.Flush();
 }
