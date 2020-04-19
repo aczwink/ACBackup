@@ -24,7 +24,8 @@ using namespace StdXX;
 
 enum class StatusTrackerType
 {
-	Terminal
+	Terminal,
+	Web
 };
 
 class StatusTracker

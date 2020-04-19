@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
+#pragma once
 #include <Std++.hpp>
 using namespace StdXX;
 //Local
@@ -37,7 +38,12 @@ public:
 	Snapshot();
 
 	//Properties
-	inline const FileSystemNodeIndex& Index() const
+	inline const FlatVolumesFileSystem& Filesystem() const
+	{
+		return *this->fileSystem;
+	}
+
+	inline const BackupNodeIndex& Index() const
 	{
 		return *this->index;
 	}
@@ -53,13 +59,27 @@ public:
 	}
 
 	//Methods
-	void AddNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex, ProcessStatus& processStatus);
+	void BackupNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex, ProcessStatus& processStatus);
+	void BackupNodeMetadata(uint32 index, const BackupNodeAttributes& oldAttributes, const OSFileSystemNodeIndex &sourceIndex, ProcessStatus& processStatus);
+	/**
+	 * Finds the newest snapshot that has the payload data of the node identified by index of this snapshot.
+	 * @param nodeIndex
+	 * @return
+	 */
+	const Snapshot* FindDataSnapshot(uint32 nodeIndex) const;
+	void Mount(const Path& mountPoint) const;
+	bool VerifyNode(const Path& path) const;
 	void Serialize() const;
 
 	//Functions
 	static UniquePointer<Snapshot> Deserialize(const Path& path);
 
 	//Inline
+	inline uint64 ComputeSize() const
+	{
+		return this->index->ComputeSumOfBlockSizes();
+	}
+
 	inline void WriteProtect()
 	{
 		WriteProtectFile(this->IndexFilePath());

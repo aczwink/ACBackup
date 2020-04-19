@@ -29,7 +29,16 @@ public:
 	BackupNodeIndex(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
 
 	//Methods
-	void Serialize(OutputStream& outputStream) const;
+	uint64 ComputeSumOfBlockSizes() const;
+	uint32 FindNodeIndexByHash(const String& hash) const;
+	FileSystemNodeInfo GetFileSystemNodeInfo(uint32 nodeIndex) const;
+	void Serialize(Serialization::XmlSerializer& xmlSerializer) const;
+
+	//Properties
+	inline const DynamicArray<uint32> ChildrenOf(uint32 directoryIndex) const
+	{
+		return this->nodeChildren[directoryIndex];
+	}
 
 	//Inline
 	inline void AddBlock(const Path& path, uint64 volumeNumber, uint64 offset, uint64 size)
@@ -39,15 +48,34 @@ public:
 		attributes.AddBlock({ .volumeNumber =  volumeNumber, .offset = offset, .size = size });
 	}
 
-private:
-	//Methods
-	void DeserializeNode(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
-	void SerializeBlocks(const DynamicArray<Block>& blocks, CommonFileFormats::XML::Element* node) const;
-	CommonFileFormats::XML::Element *SerializeNode(const Path &path, const BackupNodeAttributes& attributes) const;
-
-	//Inline
-	inline BackupNodeAttributes& GetNodeAttributes(uint32 index) const
+	inline BackupNodeAttributes& GetNodeAttributes(uint32 index)
 	{
 		return (BackupNodeAttributes&)*this->nodeAttributes[index];
 	}
+
+	inline const BackupNodeAttributes& GetNodeAttributes(uint32 index) const
+	{
+		return (BackupNodeAttributes&)*this->nodeAttributes[index];
+	}
+
+	inline bool HasNodeData(uint32 index) const
+	{
+		const BackupNodeAttributes &attributes = this->GetNodeAttributes(index);
+		return attributes.OwnsBlocks();
+	}
+
+private:
+	//Members
+	Map<uint32, DynamicArray<uint32>> nodeChildren;
+	Map<String, uint32> hashIndex;
+
+	//Methods
+	void ComputeNodeChildren();
+	DynamicArray<Block> DeserializeBlocks(StdXX::Serialization::XmlDeserializer& xmlDeserializer, bool& ownsBlocks);
+	Map<Crypto::HashAlgorithm, String> DeserializeHashes(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
+	void GenerateHashIndex();
+	void DeserializeNode(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
+	void SerializeBlocks(Serialization::XmlSerializer& xmlSerializer, const DynamicArray<Block>& blocks, bool ownsBlocks) const;
+	void SerializeHashes(Serialization::XmlSerializer& xmlSerializer, const Map<Crypto::HashAlgorithm, String>& hashes) const;
+	void SerializeNode(Serialization::XmlSerializer& xmlSerializer, const Path &path, const BackupNodeAttributes& attributes) const;
 };

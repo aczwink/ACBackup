@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -19,21 +19,26 @@
 #include <Std++.hpp>
 using namespace StdXX;
 //Local
-#include "../Config.hpp"
+#include "../backup/BackupNodeIndex.hpp"
+#include "FlatVolumesFileSystem.hpp"
 
-class FileSystemNodeAttributes
+class FlatVolumesLink : public Link
 {
 public:
-	inline FileSystemNodeAttributes(const AutoPointer<const Link>& link, const Path& target, const Config& config) : config(config)
+	//Constructor
+	inline FlatVolumesLink(uint32 nodeIndex, const BackupNodeIndex& index, const FlatVolumesFileSystem &fileSystem)
+		: nodeIndex(nodeIndex), index(index), fileSystem(fileSystem)
 	{
-		this->type = IndexableNodeType::Link;
-		this->target = target;
-		this->Init(link);
 	}
 
-protected:
-	//Members
-	const Config& config;
+	//Methods
+	void ChangePermissions(const Filesystem::NodePermissions &newPermissions) override;
+	FileSystemNodeInfo QueryInfo() const override;
+	Path ReadTarget() const override;
 
-	Path target; //only valid for links
+private:
+	//Members
+	uint32 nodeIndex;
+	const BackupNodeIndex& index;
+	const FlatVolumesFileSystem &fileSystem;
 };

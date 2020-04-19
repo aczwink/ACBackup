@@ -16,21 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <Std++.hpp>
 
-//Constructor
-Config::Config()
-{
-	this->port = 8080;
-}
+#include "../../resources/ACJSWCL.js.hpp"
+#include "../../resources/clean_light.css.hpp"
 
-Config::Config(const Path &dirPath)
-{
-	ASSERT(cfgMap.Contains(u8"port"), u8"REPORT THIS PLEASE!");
-	this->port = cfgMap[u8"port"].NumberValue();
-}
-
-//Public methods
-void Config::Write(const Path &dirPath)
-{
-	this->WriteConfigValue(textWriter, 1, u8"port", this->port, u8"Port that the status tracking web service will listen on.");
-}
+byte rsrc_index[] = {
+#include "../../resources/index.htm"
+};

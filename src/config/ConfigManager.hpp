@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
+#pragma once
 #include <Std++.hpp>
 using namespace StdXX;
 //Local
@@ -30,8 +31,6 @@ public:
 	ConfigManager(const Path& sourcePath);
 
 	//Methods
-	Crypto::HashAlgorithm MapHashAlgorithm(const String& string) const;
-	String MapHashAlgorithm(Crypto::HashAlgorithm) const;
 	void Write(const Path& dirPath);
 
 	//Inline
@@ -46,11 +45,6 @@ private:
 
 	//Members
 	struct Config config;
-
-	//Methods
-	void MapCompressionFields(struct Config& config, const CommonFileFormats::JsonValue& value) const;
-	StatusTrackerType MapStatusTrackerType(const CommonFileFormats::JsonValue& value) const;
-	void ReadConfig(const CommonFileFormats::JsonValue& cfg);
 
 	//Inline
 	inline void SetPathsInConfig()

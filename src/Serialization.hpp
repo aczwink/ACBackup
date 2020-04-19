@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -17,16 +17,19 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 //Local
-#include "../status/StatusTracker.hpp"
-#include "../Config.hpp"
-#include "FileSystemNodeIndex.hpp"
+#include <Std++.hpp>
 
-class OSFileSystemNodeIndex : public FileSystemNodeIndex
+//Constants
+static const char *const c_hashAlgorithm_sha512_256 = u8"sha512/256";
+
+namespace StdXX::Serialization
 {
-public:
-	//Constructor
-	OSFileSystemNodeIndex(const Path& path, StatusTracker& tracker, const Config& config);
-
-private:
-	StatusTracker& tracker;
-};
+	template <typename ArchiveType>
+	void CustomArchive(ArchiveType& ar, const String& name, Crypto::HashAlgorithm& hashAlgorithm)
+	{
+		StaticArray<Tuple<Crypto::HashAlgorithm, String>, 1> hashAlgorithmMapping = { {
+			{ Crypto::HashAlgorithm::SHA512_256, c_hashAlgorithm_sha512_256}
+		} };
+		ar & Binding(name, StringMapping(hashAlgorithm, hashAlgorithmMapping));
+	}
+}

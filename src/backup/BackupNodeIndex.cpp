@@ -18,36 +18,77 @@
  */
 //Class header
 #include "BackupNodeIndex.hpp"
+//Local
+#include "../config/ConfigManager.hpp"
+#include "../InjectionContainer.hpp"
+#include "../Serialization.hpp"
 //Namespaces
 using namespace StdXX::CommonFileFormats;
 using namespace StdXX::Serialization;
 
 //Constants
 static const char *const c_tag_node_name = u8"Node";
-static const char *const c_tag_node_type_name = u8"Type";
-static const char *const c_tag_node_type_file = u8"file";
-static const char *const c_tag_node_type_link = u8"link";
+static const char *const c_tag_node_attribute_type_name = u8"type";
+static const char *const c_tag_node_blocks_name = u8"Blocks";
+const char* const c_tag_node_blocks_attribute_owned_name = u8"owned";
+static const char *const c_tag_node_blocks_block_name = u8"Block";
+static const char *const c_tag_node_blocks_block_attribute_offset = u8"offset";
+static const char *const c_tag_node_blocks_block_attribute_size = u8"size";
+static const char *const c_tag_node_blocks_block_attribute_volumeNumber = u8"volumeNumber";
 static const char *const c_tag_node_lastModified_name = u8"LastModified";
+static const char *const c_tag_node_size_name = u8"Size";
 
 static const char *const c_tag_nodes_name = u8"Nodes";
 static const char *const c_tag_path_name = u8"Path";
 
 static const char *const c_tag_snapshotIndex_name = u8"SnapshotIndex";
+static const char *const c_tag_node_hashValues_name = u8"HashValues";
 
 namespace StdXX::Serialization
 {
-	inline void operator>>(XmlDeserializer& deserializer, DateTime& value)
+	inline void operator<<(XmlSerializer& serializer, const DateTime& value)
 	{
-		String tmp;
-		deserializer >> tmp;
-		value = DateTime::ParseISOString(tmp);
+		serializer << value.ToISOString();
 	}
 
-	inline void operator>>(XmlDeserializer& deserializer, Path& value)
+	template <typename ArchiveType>
+	void CustomArchive(ArchiveType& ar, Block& block)
 	{
-		String tmp;
-		deserializer >> tmp;
-		value = tmp;
+		ar.EnterElement(c_tag_node_blocks_block_name);
+		ar.EnterAttributes();
+
+		ar & Binding(c_tag_node_blocks_block_attribute_volumeNumber, block.volumeNumber);
+		ar & Binding(c_tag_node_blocks_block_attribute_offset, block.offset);
+		ar & Binding(c_tag_node_blocks_block_attribute_size, block.size);
+
+		ar.LeaveAttributes();
+		ar.LeaveElement();
+	}
+
+	template <typename ArchiveType>
+	void CustomArchive(ArchiveType& ar, Crypto::HashAlgorithm& hashAlgorithm, String& hashValue)
+	{
+		ar.EnterElement(u8"Hash");
+		ar.EnterAttributes();
+
+		CustomArchive(ar, u8"algorithm", hashAlgorithm);
+
+		ar & Binding(u8"value", hashValue);
+
+		ar.LeaveAttributes();
+		ar.LeaveElement();
+	}
+
+	template <typename ArchiveType>
+	void CustomArchive(ArchiveType& ar, const String& name, FileSystemNodeType& fileSystemNodeType)
+	{
+		StaticArray<Tuple<FileSystemNodeType, String>, 3> fileSystemNodeTypeMapping = { {
+			{ FileSystemNodeType::Directory, u8"directory"},
+			{ FileSystemNodeType::File, u8"file"},
+			{ FileSystemNodeType::Link, u8"link"},
+
+		} };
+		ar & Binding(name, StringMapping(fileSystemNodeType, fileSystemNodeTypeMapping));
 	}
 }
 
@@ -58,117 +99,221 @@ BackupNodeIndex::BackupNodeIndex(XmlDeserializer &xmlDeserializer)
 	xmlDeserializer.EnterElement(c_tag_nodes_name);
 	while(xmlDeserializer.MoreChildrenExistsAtCurrentLevel())
 	{
-		xmlDeserializer.EnterElement(c_tag_nodes_name);
+		xmlDeserializer.EnterElement(c_tag_node_name);
 		this->DeserializeNode(xmlDeserializer);
 		xmlDeserializer.LeaveElement();
 	}
 	xmlDeserializer.LeaveElement();
 	xmlDeserializer.LeaveElement();
+
+	this->ComputeNodeChildren();
+	this->GenerateHashIndex();
 }
 
 //Public methods
-void BackupNodeIndex::Serialize(OutputStream &outputStream) const
+uint64 BackupNodeIndex::ComputeSumOfBlockSizes() const
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	/*
-	XML::Document document;
-
-	XML::Element* root = new XML::Element(c_tag_snapShotIndex_name);
-
-	XML::Element* nodes = new XML::Element(c_tag_nodes_name);
+	uint64 sum = 0;
 	for(uint32 i = 0; i < this->GetNumberOfNodes(); i++)
 	{
-		XML::Element* node = this->SerializeNode(this->GetNodePath(i), this->GetNodeAttributes(i));
-		nodes->AppendChild(node);
+		const BackupNodeAttributes& attributes = this->GetNodeAttributes(i);
+		for(const Block& block : attributes.Blocks())
+			sum += block.size;
+	}
+	return sum;
+}
+
+uint32 BackupNodeIndex::FindNodeIndexByHash(const String& hash) const
+{
+	if(this->hashIndex.Contains(hash))
+		return this->hashIndex[hash];
+	return Unsigned<uint32>::Max();
+}
+
+FileSystemNodeInfo BackupNodeIndex::GetFileSystemNodeInfo(uint32 nodeIndex) const
+{
+	const BackupNodeAttributes& attributes = this->GetNodeAttributes(nodeIndex);
+
+	FileSystemNodeInfo fileSystemNodeInfo;
+	fileSystemNodeInfo.storedSize = attributes.ComputeSumOfBlockSizes();
+	fileSystemNodeInfo.lastModifiedTime = attributes.LastModifiedTime();
+
+	return fileSystemNodeInfo;
+}
+
+void BackupNodeIndex::Serialize(XmlSerializer& xmlSerializer) const
+{
+	xmlSerializer.EnterElement(c_tag_snapshotIndex_name);
+	xmlSerializer.EnterElement(c_tag_nodes_name);
+
+	for(uint32 i = 0; i < this->GetNumberOfNodes(); i++)
+	{
+		this->SerializeNode(xmlSerializer, this->GetNodePath(i), this->GetNodeAttributes(i));
 	}
 
-	root->AppendChild(nodes);
-
-	document.SetRootElement(root);
-
-	BufferedOutputStream bufferedOutputStream(outputStream);
-	document.Write(bufferedOutputStream);
-	bufferedOutputStream.Flush();
-	 */
+	xmlSerializer.LeaveElement();
+	xmlSerializer.LeaveElement();
 }
 
 //Private methods
+void BackupNodeIndex::ComputeNodeChildren()
+{
+	for(uint32 i = 0; i < this->GetNumberOfNodes(); i++)
+	{
+		const Path& path = this->GetNodePath(i);
+		if(path.IsRoot())
+			continue;
+		Path parentPath = path.GetParent();
+		if(this->HasNodeIndex(parentPath))
+			this->nodeChildren[this->GetNodeIndex(parentPath)].Push(i);
+	}
+}
+
+DynamicArray<Block> BackupNodeIndex::DeserializeBlocks(XmlDeserializer &xmlDeserializer, bool& ownsBlocks)
+{
+	if(!xmlDeserializer.HasChildElement(c_tag_node_blocks_name))
+		return {};
+
+	xmlDeserializer.EnterElement(c_tag_node_blocks_name);
+
+	xmlDeserializer.EnterAttributes();
+	xmlDeserializer & Binding(c_tag_node_blocks_attribute_owned_name, ownsBlocks);
+	xmlDeserializer.LeaveAttributes();
+	
+	DynamicArray<Block> blocks;
+	while(xmlDeserializer.MoreChildrenExistsAtCurrentLevel())
+	{
+		Block block;
+
+		CustomArchive(xmlDeserializer, block);
+
+		blocks.Push(block);
+	}
+	
+	xmlDeserializer.LeaveElement();
+	
+	return blocks;
+}
+
+Map<Crypto::HashAlgorithm, String> BackupNodeIndex::DeserializeHashes(Serialization::XmlDeserializer &xmlDeserializer)
+{
+	if(!xmlDeserializer.HasChildElement(c_tag_node_hashValues_name))
+		return {};
+
+	Map<Crypto::HashAlgorithm, String> result;
+
+	xmlDeserializer.EnterElement(c_tag_node_hashValues_name);
+	while(xmlDeserializer.MoreChildrenExistsAtCurrentLevel())
+	{
+		Crypto::HashAlgorithm hashAlgorithm;
+		String hashValue;
+
+		CustomArchive(xmlDeserializer, hashAlgorithm, hashValue);
+
+		result[hashAlgorithm] = hashValue;
+	}
+	xmlDeserializer.LeaveElement();
+
+	return result;
+}
+
+void BackupNodeIndex::GenerateHashIndex()
+{
+	Crypto::HashAlgorithm hashAlgorithm = InjectionContainer::Instance().Get<ConfigManager>().Config().hashAlgorithm;
+
+	for(uint32 i = 0; i < this->GetNumberOfNodes(); i++)
+	{
+		const BackupNodeAttributes& attributes = this->GetNodeAttributes(i);
+		if(attributes.HashValues().Contains(hashAlgorithm))
+			this->hashIndex[attributes.Hash(hashAlgorithm)] = i;
+	}
+}
+
 void BackupNodeIndex::DeserializeNode(XmlDeserializer& xmlDeserializer)
 {
-	String typeString;
-	xmlDeserializer & Binding(c_tag_node_type_name, typeString);
+	xmlDeserializer.EnterAttributes();
 
-	IndexableNodeType type;
-	if(typeString == c_tag_node_type_file)
-		type = IndexableNodeType::File;
-	else if(typeString == c_tag_node_type_link)
-		type = IndexableNodeType::Link;
-	else
-	{
-		NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	}
+	FileSystemNodeType type;
+	CustomArchive(xmlDeserializer, c_tag_node_attribute_type_name, type);
+
+	xmlDeserializer.LeaveAttributes();
 
 	Path path;
 	xmlDeserializer & Binding(c_tag_path_name, path);
-	
-	DateTime lastModified = DateTime::Now();
-	xmlDeserializer & Binding(c_tag_node_lastModified_name, lastModified);
 
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	//UniquePointer<FileSystemNodeAttributes> attributes = new BackupNodeAttributes(type, );
-	//this->AddNode(path, Move(attributes));
+	Optional<DateTime> lastModifiedTime;
+	if(xmlDeserializer.HasChildElement(c_tag_node_lastModified_name))
+	{
+		DateTime lastModified{Date::Epoch, Time()}; //initialize randomly
+		xmlDeserializer & Binding(c_tag_node_lastModified_name, lastModified);
+		lastModifiedTime = lastModified;
+	}
+	
+	uint64 size = 0;
+	if(xmlDeserializer.HasChildElement(c_tag_node_size_name))
+		xmlDeserializer & Binding(c_tag_node_size_name, size);
+
+	bool ownsBlocks = false;
+	DynamicArray<Block> blocks = this->DeserializeBlocks(xmlDeserializer, ownsBlocks);
+	Map<Crypto::HashAlgorithm, String> hashes = this->DeserializeHashes(xmlDeserializer);
+
+	UniquePointer<FileSystemNodeAttributes> attributes = new BackupNodeAttributes(type, size, lastModifiedTime, ownsBlocks, Move(blocks), Move(hashes));
+	this->AddNode(path, Move(attributes));
 }
 
-void BackupNodeIndex::SerializeBlocks(const DynamicArray<Block> &blocks, XML::Element *node) const
+void BackupNodeIndex::SerializeBlocks(Serialization::XmlSerializer& xmlSerializer, const DynamicArray<Block> &blocks, bool ownsBlocks) const
 {
 	if(blocks.IsEmpty())
 		return;
 
-	XML::Element* blocksElement = new XML::Element(u8"Blocks");
+	xmlSerializer.EnterElement(c_tag_node_blocks_name);
+	xmlSerializer.EnterAttributes();
+	xmlSerializer & Binding(c_tag_node_blocks_attribute_owned_name, ownsBlocks);
+	xmlSerializer.LeaveAttributes();
 
-	for(const Block& block : blocks)
+	for(Block block : blocks)
 	{
-		XML::Element* blockElement = new XML::Element(u8"Block");
-		blocksElement->AppendChild(blockElement);
-
-		blockElement->SetAttribute(u8"volumeNumber", String::Number(block.volumeNumber));
-		blockElement->SetAttribute(u8"offset", String::Number(block.offset));
-		blockElement->SetAttribute(u8"size", String::Number(block.size));
+		CustomArchive(xmlSerializer, block);
 	}
 
-	node->AppendChild(blocksElement);
+	xmlSerializer.LeaveElement();
 }
 
-CommonFileFormats::XML::Element *BackupNodeIndex::SerializeNode(const Path &path, const BackupNodeAttributes& attributes) const
+void BackupNodeIndex::SerializeHashes(Serialization::XmlSerializer &xmlSerializer, const Map<Crypto::HashAlgorithm, String> &hashes) const
 {
-	XML::Element* node = new XML::Element(c_tag_node_name);
+	if(hashes.IsEmpty())
+		return;
 
-	switch(attributes.Type())
+	xmlSerializer.EnterElement(c_tag_node_hashValues_name);
+	for(KeyValuePair<Crypto::HashAlgorithm, String> kv : hashes)
 	{
-		case IndexableNodeType::File:
-			node->SetAttribute(c_tag_node_type_name, c_tag_node_type_file);
-			break;
-		case IndexableNodeType::Link:
-			node->SetAttribute(c_tag_node_type_name, c_tag_node_type_link);
-			break;
+		CustomArchive(xmlSerializer, kv.key, kv.value);
 	}
+	xmlSerializer.LeaveElement();
+}
 
-	XML::Element* pathNode = new XML::Element(c_tag_path_name);
-	pathNode->AppendChild(new XML::TextNode(path.GetString()));
-	node->AppendChild(pathNode);
+void BackupNodeIndex::SerializeNode(XmlSerializer& xmlSerializer, const Path &path, const BackupNodeAttributes& attributes) const
+{
+	xmlSerializer.EnterElement(c_tag_node_name);
+
+	xmlSerializer.EnterAttributes();
+	FileSystemNodeType type = attributes.Type();
+	CustomArchive(xmlSerializer, c_tag_node_attribute_type_name, type);
+	xmlSerializer.LeaveAttributes();
+
+	xmlSerializer & Binding(c_tag_path_name, path);
 
 	if(attributes.LastModifiedTime().HasValue())
 	{
-		XML::Element* lastModifiedNode = new XML::Element(c_tag_node_lastModified_name);
-		lastModifiedNode->AppendChild(new XML::TextNode(attributes.LastModifiedTime()->ToISOString()));
-		node->AppendChild(lastModifiedNode);
+		xmlSerializer & Binding(c_tag_node_lastModified_name, *attributes.LastModifiedTime());
 	}
 
-	XML::Element* sizeNode = new XML::Element(u8"Size");
-	sizeNode->AppendChild(new XML::TextNode(String::Number(attributes.Size())));
-	node->AppendChild(sizeNode);
+	uint64 size = attributes.Size();
+	if(attributes.Type() != FileSystemNodeType::Directory)
+		xmlSerializer & Binding(c_tag_node_size_name, size);
 
-	this->SerializeBlocks(attributes.Blocks(), node);
+	this->SerializeBlocks(xmlSerializer, attributes.Blocks(), attributes.OwnsBlocks());
+	this->SerializeHashes(xmlSerializer, attributes.HashValues());
 
-	return node;
+	xmlSerializer.LeaveElement();
 }

@@ -16,15 +16,12 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
+#pragma once
 #include "../status/StatusTracker.hpp"
 
 struct Config
 {
-	Path backupPath;
-	Path dataPath;
-	Path indexPath;
 	Path sourcePath;
-
 	uint32 blockSize;
 	uint64 volumeSize;
 	CompressionStreamFormatType compressionStreamFormatType;
@@ -32,4 +29,10 @@ struct Config
 	uint8 maxCompressionLevel;
 	Crypto::HashAlgorithm hashAlgorithm;
 	StatusTrackerType statusTrackerType;
+	uint16 statusTrackerPort;
+
+	//derived fields, not configurable
+	Path backupPath;
+	Path dataPath;
+	Path indexPath;
 };

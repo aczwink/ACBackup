@@ -16,23 +16,33 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Class header
-#include "StatusTracker.hpp"
+#include <Std++.hpp>
+using namespace StdXX;
 //Local
-#include "TerminalStatusTracker.hpp"
-#include "WebStatusTracker.hpp"
-#include "../InjectionContainer.hpp"
-#include "../config/ConfigManager.hpp"
+#include "../backup/BackupNodeAttributes.hpp"
+#include "FlatVolumesFileSystem.hpp"
 
-//Class functions
-StatusTracker *StatusTracker::CreateInstance(StatusTrackerType type)
+class FlatVolumesBlockInputStream : public InputStream
 {
-	switch(type)
+public:
+	//Constructor
+	inline FlatVolumesBlockInputStream(const FlatVolumesFileSystem &fileSystem, const DynamicArray<Block>& blocks)
+		: fileSystem(fileSystem), blocks(blocks)
 	{
-		case StatusTrackerType::Terminal:
-			return new TerminalStatusTracker;
-		case StatusTrackerType::Web:
-			return new WebStatusTracker(InjectionContainer::Instance().Get<ConfigManager>().Config().statusTrackerPort);
+		this->currentBlockIndex = 0;
+		this->blockOffset = 0;
 	}
-	return nullptr;
-}
+
+	//Methods
+	uint32 GetBytesAvailable() const override;
+	bool IsAtEnd() const override;
+	uint32 ReadBytes(void *destination, uint32 count) override;
+	uint32 Skip(uint32 nBytes) override;
+
+private:
+	//Members
+	uint32 currentBlockIndex;
+	uint64 blockOffset;
+	const FlatVolumesFileSystem &fileSystem;
+	const DynamicArray<Block>& blocks;
+};

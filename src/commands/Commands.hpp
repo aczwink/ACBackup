@@ -22,3 +22,7 @@ using namespace StdXX;
 //Prototypes
 int32 CommandAddSnapshot();
 int32 CommandInit(const Path& sourcePath);
+int32 CommandMountSnapshot(const String& snapshotName, const Path& mountPoint);
+int32 CommandVerifyAllSnapshots();
+int32 CommandVerifyNewestSnapshot();
+int32 CommandVerifySnapshot(const String& snapshotName, bool full);

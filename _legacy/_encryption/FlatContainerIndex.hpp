@@ -16,11 +16,32 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Class header
-#include "StatusTrackerWebService.hpp"
+#pragma once
+//Local
+#include "../BackupContainerIndex.hpp"
+#include "../_legacy/BackupNodeAttributes.hpp"
 
-//Constructor
-StatusTrackerWebService::StatusTrackerWebService(StatusTracker& statusTracker, uint16 port) : statusTracker(statusTracker),
-                                                                                              HTTPServer(IPv4Address::GetAnyHostAddress(), port)
+struct FlatContainerFileAttributes : public FileSystemNodeAttributes
 {
-}
+	union
+	{
+		struct
+		{
+			uint8 nonce[12];
+			uint32 initialValue;
+		} small;
+		struct
+		{
+			uint8 nonce[8];
+			uint64 initialValue;
+		} big;
+	} encCounterValue;
+};
+
+class FlatContainerIndex : public BackupContainerIndex
+{
+private:
+	//Members
+	bool isEncrypted;
+	DynamicArray<uint8> encryptionKey;
+};

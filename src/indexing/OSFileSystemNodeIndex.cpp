@@ -21,6 +21,8 @@
 //Local
 #include "../InjectionContainer.hpp"
 #include "../status/StatusTracker.hpp"
+#include "LinkPointsOutOfIndexDirException.hpp"
+#include "../config/ConfigManager.hpp"
 
 //Constructor
 OSFileSystemNodeIndex::OSFileSystemNodeIndex(const Path &path) : basePath(path)
@@ -29,9 +31,42 @@ OSFileSystemNodeIndex::OSFileSystemNodeIndex(const Path &path) : basePath(path)
 }
 
 //Public methods
+String OSFileSystemNodeIndex::ComputeNodeHash(uint32 nodeIndex) const
+{
+	const FileSystemNodeAttributes& attributes = this->GetNodeAttributes(nodeIndex);
+	ASSERT(attributes.Type() != FileSystemNodeType::Directory, u8"Can't hash directory");
+
+	const Path &nodePath = this->GetNodePath(nodeIndex);
+
+	UniquePointer<InputStream> inputStream;
+	if(attributes.Type() == FileSystemNodeType::File)
+		inputStream = this->OpenFile(nodePath);
+	else if(attributes.Type() == FileSystemNodeType::Link)
+		inputStream = this->OpenLinkTargetAsStream(nodePath);
+
+	InjectionContainer &injectionContainer = InjectionContainer::Instance();
+	const Config &config = injectionContainer.Get<ConfigManager>().Config();
+
+	Crypto::HashingInputStream hashingInputStream(*inputStream, config.hashAlgorithm);
+	NullOutputStream nullOutputStream;
+	uint64 readSize = hashingInputStream.FlushTo(nullOutputStream);
+	UniquePointer<Crypto::HashFunction> hasher = hashingInputStream.Reset();
+	hasher->Finish();
+	ASSERT_EQUALS(readSize, attributes.Size());
+
+	return hasher->GetDigestString().ToLowercase();
+}
+
+UniquePointer<InputStream> OSFileSystemNodeIndex::OpenLinkTargetAsStream(const Path& nodePath) const
+{
+	AutoPointer<const Link> link = OSFileSystem::GetInstance().GetNode(this->MapNodePathToFileSystemPath(nodePath)).MoveCast<const Link>();
+	Path linkTarget = link->ReadTarget();
+	return new StringInputStream(linkTarget.GetString(), true);
+}
+
 UniquePointer<InputStream> OSFileSystemNodeIndex::OpenFile(const Path &filePath) const
 {
-	return new FileInputStream(this->basePath.GetString() + filePath.GetString());
+	return new FileInputStream(this->MapNodePathToFileSystemPath(filePath));
 }
 
 //Private methods
@@ -39,33 +74,56 @@ void OSFileSystemNodeIndex::GenerateIndex()
 {
 	InjectionContainer& ic = InjectionContainer::Instance();
 
-	auto dir = OSFileSystem::GetInstance().GetDirectory(this->basePath);
-	auto dirWalker = dir->WalkFiles();
-
 	ProcessStatus& findStatus = ic.Get<StatusTracker>().AddProcessStatusTracker(u8"Reading directory");
-	for(const Path& relPath : dirWalker)
-	{
-		AutoPointer<const FileSystemNode> node = OSFileSystem::GetInstance().GetNode(this->basePath / relPath);
-
-		UniquePointer<FileSystemNodeAttributes> attributes;
-		switch(node->GetType())
-		{
-			case FileSystemNodeType::File:
-			{
-				FileSystemNodeAttributes *fileAttributes = new FileSystemNodeAttributes(node.Cast<const File>());
-				findStatus.AddTotalSize(fileAttributes->Size());
-				attributes = fileAttributes;
-			}
-			break;
-			case FileSystemNodeType::Link:
-				NOT_IMPLEMENTED_ERROR; //TODO: implement me
-				break;
-			default:
-				RAISE(ErrorHandling::IllegalCodePathError);
-		}
-
-		this->AddNode(relPath, Move(attributes));
-		findStatus.IncFileCount();
-	}
+	this->IndexNode(OSFileSystem::GetInstance().GetDirectory(this->basePath), String(u8"/"), findStatus);
 	findStatus.Finished();
+}
+
+void OSFileSystemNodeIndex::IndexDirectoryChildren(AutoPointer<const Directory> dir, const Path& path, ProcessStatus& findStatus)
+{
+	for(const String& childName : *dir)
+	{
+		this->IndexNode(dir->GetChild(childName), path / childName, findStatus);
+	}
+}
+
+void OSFileSystemNodeIndex::IndexNode(AutoPointer<const FileSystemNode> node, const Path& nodePath, ProcessStatus& findStatus)
+{
+	UniquePointer<FileSystemNodeAttributes> attributes;
+	switch(node->GetType())
+	{
+		case FileSystemNodeType::Directory:
+			attributes = new FileSystemNodeAttributes(node.Cast<const Directory>());
+			break;
+		case FileSystemNodeType::File:
+			attributes = new FileSystemNodeAttributes(node.Cast<const File>());;
+			break;
+		case FileSystemNodeType::Link:
+		{
+			AutoPointer<const Link> link = node.Cast<const Link>();
+			Path target = link->ReadTarget();
+
+			//check if target points out
+			Path absoluteTarget;
+			if(target.IsRelative())
+				absoluteTarget = this->MapNodePathToFileSystemPath(nodePath.GetParent() / target);
+			else
+				absoluteTarget = target;
+
+			if(!this->basePath.IsParentOf(absoluteTarget))
+				throw LinkPointsOutOfIndexDirException();
+
+			attributes = new FileSystemNodeAttributes(link);
+		}
+		break;
+		default:
+			RAISE(ErrorHandling::IllegalCodePathError);
+	}
+
+	findStatus.AddTotalSize(attributes->Size());
+	this->AddNode(nodePath, Move(attributes));
+	findStatus.IncFileCount();
+
+	if(node->GetType() == FileSystemNodeType::Directory)
+		this->IndexDirectoryChildren(node.Cast<const Directory>(), nodePath, findStatus);
 }

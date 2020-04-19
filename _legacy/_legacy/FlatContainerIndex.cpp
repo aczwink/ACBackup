@@ -17,7 +17,7 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 //Class header
-#include "FlatContainerIndex.hpp"
+#include "../encryption/FlatContainerIndex.hpp"
 //Local
 #include "../FlatContainerFileSystem.hpp"
 
@@ -30,61 +30,11 @@ FlatContainerIndex::FlatContainerIndex(const Path &prefixPath, const Optional<En
 		this->encryptionKey.Resize(AES_KEY_SIZE);
 		DeriveFileDataKey(*encryptionInfo, this->GetDataPath().GetName(), &this->encryptionKey[0]);
 	}
-
-	if(OSFileSystem::GetInstance().Exists(this->GetIndexPath()))
-	{
-		//open in read mode
-		this->ReadIndexFile(encryptionInfo);
-		this->reading.dataContainer = new FlatContainerFileSystem(*this, this->GetDataPath());
-	}
-	else
-	{
-		//open in write mode
-		this->writing.dataFile = new FileOutputStream(this->GetDataPath());
-	}
 }
 
 //Public methods
-void FlatContainerIndex::AddPreviousFile(const Path &filePath, const FileSystemNodeIndex &index)
-{
-	const FileSystemNodeAttributes& fileAttributes = index.GetNodeAttributes(index.FindNodeIndex(filePath));
-
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	/*
-	//fill out entry
-	FlatContainerFileAttributes backupEntry;
-
-	MemCopy(backupEntry.digest, fileAttributes.digest, sizeof(fileAttributes.digest));
-	backupEntry.size = fileAttributes.size;
-	backupEntry.offset = Unsigned<uint64>::Max(); //special, means that we don't have it but another snapshot
-
-	//add entry
-	AutoLock lock(this->fileHeaderLock);
-	uint32 attrIndex = this->fileAttributes.Push(Move(backupEntry));
-	this->fileEntries.Insert(filePath, attrIndex);*/
-}
-
 float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileSystemNodeIndex& index, float32 compressionRate, const int8 maxCompressionLevel, const uint64 memLimit)
 {
-	const FileSystemNodeAttributes& srcNodeAttributes = index.GetNodeAttributes(index.FindNodeIndex(filePath));
-	UniquePointer<BackupNodeAttributes> backupEntry = new BackupNodeAttributes(compressionRate, srcNodeAttributes);
-
-	if((srcNodeAttributes.Size() < memLimit) && backupEntry->IsCompressed())
-	{
-		this->BackupFileInMemory(filePath, *backupEntry, index);
-	}
-	else
-	{
-		NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	}
-
-	//add entry
-	AutoLock lock(this->fileHeaderLock);
-	uint32 attrIndex = this->nodeAttributes.Push(Move(backupEntry));
-	this->fileEntries.Insert(filePath, attrIndex);
-
-	return backupEntry->CompressionRate();
-
 	/*
 	//generate counter value
 	UniquePointer<Crypto::Counter> counter;
@@ -151,44 +101,12 @@ float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileSystemNod
 	*/
 }
 
-uint32 FlatContainerIndex::FindNodeIndex(const Path &path) const
-{
-	if(this->fileEntries.Contains(path))
-		return this->fileEntries.Get(path);
-	return Unsigned<uint32>::Max();
-}
-
-const Path &FlatContainerIndex::GetNodePath(uint32 index) const
-{
-	return this->fileEntries.GetReverse(index);
-}
-
-const FileSystemNodeAttributes &FlatContainerIndex::GetNodeAttributes(uint32 index) const
-{
-	return *this->nodeAttributes[index];
-}
-
-uint32 FlatContainerIndex::GetNumberOfNodes() const
-{
-	return this->nodeAttributes.GetNumberOfElements();
-}
-
-bool FlatContainerIndex::HasFileData(uint32 index) const
-{
-	return this->nodeAttributes[index]->Offset() != Unsigned<uint64>::Max();
-}
-
 UniquePointer<InputStream> FlatContainerIndex::OpenFileForReading(const Path& filePath) const
 {
 	NOT_IMPLEMENTED_ERROR; //TODO: REIMPLEMENT ME
 	return nullptr;
 	/*
 	AutoPointer<const File> file = this->reading.dataContainer->GetFile(filePath);
-
-	UniquePointer<InputStream> stream = file->OpenForReading(false);
-	ChainedInputStream* chain = new ChainedInputStream(Move(stream));
-
-	chain->Add( new BufferedInputStream(chain->GetEnd()) );
 
 	uint32 index = this->fileEntries.Get(filePath);
 	const FlatContainerFileAttributes& backupEntry = *this->fileAttributes[index];
@@ -215,19 +133,6 @@ UniquePointer<InputStream> FlatContainerIndex::OpenFileForReading(const Path& fi
 
 void FlatContainerIndex::Serialize(const Optional<EncryptionInfo>& encryptionInfo) const
 {
-	FileOutputStream fileOutputStream(this->GetIndexPath(), true); //overwrite old
-
-	//write header
-	{
-		DataWriter dataWriter(true, fileOutputStream);
-
-		//header
-		fileOutputStream.WriteBytes(u8"acbkpidx", 8);
-		dataWriter.WriteUInt16(1); //version major
-		dataWriter.WriteUInt16(0); //version minor
-		fileOutputStream.WriteBytes(u8"flat", 4);
-	}
-
 	//file entries
 	OutputStream* target = &fileOutputStream;
 	UniquePointer<Crypto::CBCCipher> cipher;
@@ -243,22 +148,6 @@ void FlatContainerIndex::Serialize(const Optional<EncryptionInfo>& encryptionInf
 	Crypto::HashingOutputStream hashingOutputStream(*target, Crypto::HashAlgorithm::SHA256);
 	BufferedOutputStream bufferedOutputStream(hashingOutputStream);
 
-	DataWriter dataWriter(true, bufferedOutputStream);
-	TextWriter textWriter(bufferedOutputStream, TextCodecType::UTF8);
-
-	dataWriter.WriteUInt32(this->nodeAttributes.GetNumberOfElements());
-	for(const auto& fileEntry : this->fileEntries)
-	{
-		NOT_IMPLEMENTED_ERROR; //TODO: implement me
-		/*
-		const FlatContainerFileAttributes& attributes = this->fileAttributes[fileEntry.value];
-
-		textWriter.WriteStringZeroTerminated(fileEntry.key.GetString());
-		dataWriter.WriteUInt64(attributes.size);
-		dataWriter.WriteBytes(attributes.digest, sizeof(attributes.digest));
-		dataWriter.WriteUInt64(attributes.offset);
-		dataWriter.WriteUInt64(attributes.blockSize);
-		dataWriter.WriteByte(static_cast<byte>(attributes.isCompressed));
 		if(this->isEncrypted)
 		{
 			if(attributes.size >= Unsigned<uint32>::Max())
@@ -271,7 +160,7 @@ void FlatContainerIndex::Serialize(const Optional<EncryptionInfo>& encryptionInf
 				dataWriter.WriteBytes(attributes.encCounterValue.small.nonce, sizeof(attributes.encCounterValue.small.nonce));
 				dataWriter.WriteUInt32(attributes.encCounterValue.small.initialValue);
 			}
-		}*/
+		}
 	}
 	bufferedOutputStream.Flush();
 	if(!cipher.IsNull())
@@ -283,51 +172,8 @@ void FlatContainerIndex::Serialize(const Optional<EncryptionInfo>& encryptionInf
 	fileOutputStream.WriteBytes(&digest[0], digest.GetNumberOfElements());
 }
 
-//Class functions
-/*Snapshot FlatContainerIndex::Deserialize(const Path &path, const Optional<EncryptionInfo>& encryptionInfo)
-{
-	Path prefixPath = path.GetParent() / path.GetTitle();
-	FlatContainerIndex* idx = new FlatContainerIndex(prefixPath, encryptionInfo);
-
-	return { path.GetTitle(), idx };
-}*/
-
-//Private methods
-void FlatContainerIndex::BackupFileInMemory(const Path& filePath, BackupNodeAttributes& backupEntry, const FileSystemNodeIndex& index)
-{
-	FIFOBuffer buffer;
-	buffer.EnsureCapacity(static_cast<uint32>(backupEntry.Size()));
-
-	//filter data first
-	OutputStream* sink = &buffer;
-
-	UniquePointer<Compressor> compressor;
-	if(backupEntry.IsCompressed())
-	{
-		NOT_IMPLEMENTED_ERROR; //TODO: extract algorithm into config
-		compressor = Compressor::Create(CompressionAlgorithm::LZMA, *sink, backupEntry.CompressionLevel());
-		sink = compressor.operator->();
-	}
-
-	UniquePointer<InputStream> fileInputStream = index.OpenFileForReading(filePath);
-	fileInputStream->FlushTo(*sink);
-	sink->Flush();
-	if(backupEntry.IsCompressed())
-		compressor->Finalize();
-
-	//now write
-	AutoLock lock(this->writing.writeLock);
-
-	backupEntry.Offset(this->writing.dataFile->GetCurrentOffset());
-	buffer.FlushTo(*this->writing.dataFile);
-	backupEntry.BlockSize(this->writing.dataFile->GetCurrentOffset() - backupEntry.Offset());
-}
-
 void FlatContainerIndex::ReadIndexFile(const Optional<EncryptionInfo>& encryptionInfo)
 {
-	FileInputStream indexFile(this->GetIndexPath());
-	indexFile.Skip(16); //skip header
-
 	//read file entries
 	LimitedInputStream limitedInputStream(indexFile, indexFile.GetRemainingBytes() - 32); //read all but the sha256 digest at the end
 
@@ -349,21 +195,6 @@ void FlatContainerIndex::ReadIndexFile(const Optional<EncryptionInfo>& encryptio
 	DataReader dataReader(true, bufferedInputStream);
 	TextReader textReader(bufferedInputStream, TextCodecType::UTF8);
 
-	uint32 nFiles = dataReader.ReadUInt32();
-	for(uint32 i = 0; i < nFiles; i++)
-	{
-		NOT_IMPLEMENTED_ERROR; //TODO: implement me
-		/*
-		Path filePath = textReader.ReadZeroTerminatedString();
-
-		FlatContainerFileAttributes fileEntry;
-		fileEntry.size = dataReader.ReadUInt64();
-		dataReader.ReadBytes(fileEntry.digest, sizeof(fileEntry.digest));
-		fileEntry.offset = dataReader.ReadUInt64();
-		fileEntry.blockSize = dataReader.ReadUInt64();
-		fileEntry.isCompressed = dataReader.ReadByte() != 0;
-		if(this->isEncrypted)
-		{
 			if(fileEntry.size >= Unsigned<uint32>::Max())
 			{
 				dataReader.ReadBytes(fileEntry.encCounterValue.big.nonce, sizeof(fileEntry.encCounterValue.big.nonce));
@@ -375,11 +206,6 @@ void FlatContainerIndex::ReadIndexFile(const Optional<EncryptionInfo>& encryptio
 				fileEntry.encCounterValue.small.initialValue = dataReader.ReadUInt32();
 			}
 		}
-
-		uint32 attrIndex = this->fileAttributes.Push(Move(fileEntry));
-		this->fileEntries.Insert(Move(filePath), attrIndex);
-		*/
-	}
 
 	UniquePointer<Crypto::HashFunction> hasher = hashingInputStream.Reset();
 	hasher->Finish();

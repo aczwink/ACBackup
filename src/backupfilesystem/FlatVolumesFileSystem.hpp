@@ -16,17 +16,25 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
+#pragma once
 #include <Std++.hpp>
 using namespace StdXX;
 //Local
 #include "../backup/BackupNodeIndex.hpp"
 
 //Forward declarations
+class FlatVolumesBlockInputStream;
 class VolumesOutputStream;
 
 class FlatVolumesFileSystem : public FileSystem
 {
-	struct OpenVolume
+	struct OpenVolumeForReading
+	{
+		UniquePointer<FileInputStream> file;
+		Mutex mutex;
+	};
+
+	struct OpenVolumeForWriting
 	{
 		uint64 number;
 		UniquePointer<FileOutputStream> file;
@@ -48,6 +56,8 @@ public:
 	AutoPointer<const Directory> GetRoot() const override;
 	uint64 GetSize() const override;
 	void Move(const Path &from, const Path &to) override;
+	UniquePointer<InputStream> OpenLinkTargetAsStream(const Path& linkPath, bool verify) const;
+	uint32 ReadBytes(const FlatVolumesBlockInputStream& reader, void *destination, uint64 volumeNumber, uint64 offset, uint32 count) const;
 	void WriteBytes(const VolumesOutputStream& writer, const void* source, uint32 size);
 	void WriteProtect();
 
@@ -57,12 +67,25 @@ private:
 	BackupNodeIndex& index;
 	struct
 	{
+		BinaryTreeSet<Path> directories;
+		mutable UniquePointer<FixedArray<OpenVolumeForReading>> openVolumes;
+	} reading;
+	struct
+	{
+		bool createdDataDir;
 		uint64 nextVolumeNumber;
-		LinkedList<OpenVolume> openVolumes;
+		LinkedList<OpenVolumeForWriting> openVolumes;
 		Mutex openVolumesMutex;
 	} writing;
 
 	//Methods
 	void BytesWereWrittenToVolume(const VolumesOutputStream* writer, uint64 offset, uint32 nBytesWritten);
 	SeekableOutputStream& FindStream(const OutputStream* writer, uint64& leftSize);
+	SeekableInputStream& LockVolumeStream(uint64 volumeNumber) const;
+
+	//Inline
+	inline void UnlockVolumeStream(uint64 volumeNumber) const
+	{
+		(*this->reading.openVolumes)[volumeNumber].mutex.Unlock();
+	}
 };

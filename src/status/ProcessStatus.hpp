@@ -48,6 +48,7 @@ public:
 
 	//Methods
 	Optional<DateTime> ComputeExpectedEndTime() const;
+	CommonFileFormats::JsonValue ToJSON() const;
 
 	//Properties
 	inline uint64 DoneSize() const
@@ -134,6 +135,12 @@ public:
 	{
 		AutoLock lock(this->mutex);
 		this->nFinishedFiles++;
+	}
+
+	inline void ReduceTotalSize(uint64 size)
+	{
+		AutoLock lock(this->mutex);
+		this->totalSize -= size;
 	}
 
 private:

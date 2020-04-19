@@ -22,17 +22,47 @@ using namespace StdXX;
 //Local
 #include "FileSystemNodeAttributes.hpp"
 
+enum class NodeDifferenceType
+{
+	BackupFully,
+	BackreferenceWithDifferentPath,
+	Delete,
+	UpdateMetadataOnly,
+};
+
+struct NodeDifference
+{
+	NodeDifferenceType type;
+	uint32 moveIndex;
+};
+
 class FileSystemNodeIndex
 {
 public:
+	//Destructor
+	virtual ~FileSystemNodeIndex() {}
+
 	//Methods
+	/**
+	 * Returns the indices from this index that are different from other
+	 * @return
+	 */
+	BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& other) const;
+	/**
+	 * No compression or filtering whatsoever.
+	 * The raw user data file size.
+	 * @return
+	 */
+	uint64 ComputeTotalSize() const;
 	uint64 ComputeTotalSize(const BinaryTreeSet<uint32>& nodeIndices) const;
+	uint64 ComputeTotalSize(const Map<uint32, NodeDifference>& nodeIndices) const;
 
 	//Inline
-	inline void AddNode(const Path& path, UniquePointer<FileSystemNodeAttributes>&& attributes)
+	inline uint32 AddNode(const Path& path, UniquePointer<FileSystemNodeAttributes>&& attributes)
 	{
 		uint32 index = this->nodeAttributes.Push(Move(attributes));
 		this->pathMap.Insert(path.IsAbsolute() ? path : u8"/" + path.GetString(), index);
+		return index;
 	}
 
 	inline const FileSystemNodeAttributes& GetNodeAttributes(uint32 index) const
@@ -53,6 +83,11 @@ public:
 	inline uint32 GetNumberOfNodes() const
 	{
 		return this->nodeAttributes.GetNumberOfElements();
+	}
+
+	inline bool HasNodeIndex(const Path& path) const
+	{
+		return this->pathMap.Contains(path);
 	}
 
 protected:

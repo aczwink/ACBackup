@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -18,17 +18,29 @@
  */
 #include <Std++.hpp>
 using namespace StdXX;
+//Local
+#include "Snapshot.hpp"
 
-//Forward declarations
-class StatusTracker;
-
-class StatusTrackerWebService : public HTTPServer
+class VirtualSnapshotFilesystem : public FileSystem
 {
 public:
 	//Constructor
-	StatusTrackerWebService(StatusTracker& statusTracker, uint16 port);
+	inline VirtualSnapshotFilesystem(const Snapshot& snapshot) : FileSystem(nullptr), snapshot(snapshot)
+	{
+	}
+
+	//Methods
+	UniquePointer<OutputStream> CreateFile(const Path &filePath) override;
+	bool Exists(const Path &path) const override;
+	void Flush() override;
+	AutoPointer<FileSystemNode> GetNode(const Path &path) override;
+	AutoPointer<const FileSystemNode> GetNode(const Path &path) const override;
+	AutoPointer<Directory> GetRoot() override;
+	AutoPointer<const Directory> GetRoot() const override;
+	uint64 GetSize() const override;
+	void Move(const Path &from, const Path &to) override;
 
 private:
 	//Members
-	StatusTracker& statusTracker;
+	const Snapshot& snapshot;
 };

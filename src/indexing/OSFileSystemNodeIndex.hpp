@@ -21,6 +21,7 @@
 using namespace StdXX;
 //Local
 #include "FileSystemNodeIndex.hpp"
+#include "../status/ProcessStatus.hpp"
 
 class OSFileSystemNodeIndex : public FileSystemNodeIndex
 {
@@ -29,6 +30,8 @@ public:
 	OSFileSystemNodeIndex(const Path& path);
 
 	//Methods
+	String ComputeNodeHash(uint32 nodeIndex) const;
+	UniquePointer<InputStream> OpenLinkTargetAsStream(const Path& nodePath) const;
 	UniquePointer<InputStream> OpenFile(const Path& filePath) const;
 
 private:
@@ -37,4 +40,12 @@ private:
 
 	//Methods
 	void GenerateIndex();
+	void IndexDirectoryChildren(AutoPointer<const Directory> dir, const Path& path, ProcessStatus& findStatus);
+	void IndexNode(AutoPointer<const FileSystemNode> node, const Path& nodePath, ProcessStatus& findStatus);
+
+	//Inline
+	inline Path MapNodePathToFileSystemPath(const Path &nodePath) const
+	{
+		return basePath.GetString() + nodePath.GetString();
+	}
 };

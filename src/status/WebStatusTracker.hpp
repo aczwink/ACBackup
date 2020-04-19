@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -17,29 +17,27 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 //Local
+#include "StatusTracker.hpp"
 #include "StatusTrackerWebService.hpp"
-#include "ProcessStatus.hpp"
 
-class StatusTracker
+class WebStatusTracker : public StatusTracker
 {
+	friend class StatusTrackerWebService;
 public:
 	//Constructor
-	StatusTracker(uint16 port);
+	WebStatusTracker(uint16 port);
 
 	//Destructor
-	~StatusTracker();
+	~WebStatusTracker();
 
-	inline uint16 GetPort() const
-	{
-		return this->httpServer.GetBoundPort();
-	}
-
-	inline HTTPServer& GetServer()
+	//Properties
+	inline class HTTPServer& HTTPServer()
 	{
 		return this->httpServer;
 	}
 
-
+private:
+	//Members
 	StatusTrackerWebService httpServer;
 	Thread thread;
 };

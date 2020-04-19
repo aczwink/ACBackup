@@ -26,16 +26,6 @@ public:
 	}
 
 	//Properties
-	inline uint64 BlockSize() const
-	{
-		return this->blockSize;
-	}
-
-	inline void BlockSize(uint64 blockSize)
-	{
-		this->blockSize = blockSize;
-	}
-
 	inline uint8 CompressionLevel() const
 	{
 		return this->compressionLevel;
@@ -54,22 +44,10 @@ public:
 		return this->isCompressed;
 	}
 
-	inline uint64 Offset() const
-	{
-		return this->offset;
-	}
-
-	inline void Offset(uint64 offset)
-	{
-		this->offset = offset;
-	}
-
 private:
 	//Members
 	bool isCompressed;
 	uint8 compressionLevel;
-	uint64 offset;
-	uint64 blockSize; //size of data after compression
 
 	//Methods
 	void ConfigureCompression(float32 compressionRate);

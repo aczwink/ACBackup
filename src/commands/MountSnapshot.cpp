@@ -16,23 +16,30 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-//Class header
-#include "StatusTracker.hpp"
 //Local
-#include "TerminalStatusTracker.hpp"
-#include "WebStatusTracker.hpp"
-#include "../InjectionContainer.hpp"
-#include "../config/ConfigManager.hpp"
+#include "../backup/SnapshotManager.hpp"
 
-//Class functions
-StatusTracker *StatusTracker::CreateInstance(StatusTrackerType type)
+int32 CommandMountSnapshot(const String& snapshotName, const Path& mountPoint)
 {
-	switch(type)
+	InjectionContainer &ic = InjectionContainer::Instance();
+
+	ConfigManager configManager;
+	ic.Register(configManager);
+
+	UniquePointer<StatusTracker> statusTracker = StatusTracker::CreateInstance(configManager.Config().statusTrackerType);
+	ic.Register(*statusTracker);
+
+	StaticThreadPool threadPool;
+	ic.Register(threadPool);
+
+	SnapshotManager snapshotManager;
+	const Snapshot* snapshot = snapshotManager.FindSnapshot(snapshotName);
+	if(!snapshot)
 	{
-		case StatusTrackerType::Terminal:
-			return new TerminalStatusTracker;
-		case StatusTrackerType::Web:
-			return new WebStatusTracker(InjectionContainer::Instance().Get<ConfigManager>().Config().statusTrackerPort);
+		stdErr << u8"Snapshot with name '" << snapshotName << u8"' not found." << endl;
+		return EXIT_FAILURE;
 	}
-	return nullptr;
+	snapshot->Mount(mountPoint);
+
+	return EXIT_SUCCESS;
 }

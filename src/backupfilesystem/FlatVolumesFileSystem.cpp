@@ -23,19 +23,34 @@
 #include "../InjectionContainer.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../Util.hpp"
+#include "FlatVolumesFile.hpp"
+#include "FlatVolumesDirectory.hpp"
+#include "FlatVolumesLink.hpp"
 
 //Constructor
 FlatVolumesFileSystem::FlatVolumesFileSystem(const Path &dirPath, BackupNodeIndex& index)
 		: FileSystem(nullptr), dirPath(dirPath), index(index)
 {
+	this->writing.createdDataDir = false;
 	this->writing.nextVolumeNumber = 0;
+
+	//count volumes
+	BinaryTreeSet<uint64> volumes;
+	for(uint32 i = 0; i < index.GetNumberOfNodes(); i++)
+	{
+		BackupNodeAttributes& attributes = index.GetNodeAttributes(i);
+		for(const Block& block : attributes.Blocks())
+			volumes.Insert(block.volumeNumber);
+	}
+
+	this->reading.openVolumes = new FixedArray<OpenVolumeForReading>(volumes.GetNumberOfElements());
 }
 
 //Public methods
 void FlatVolumesFileSystem::CloseFile(const VolumesOutputStream& outputStream)
 {
 	AutoLock lock(this->writing.openVolumesMutex);
-	for(OpenVolume& openVolume : this->writing.openVolumes)
+	for(OpenVolumeForWriting& openVolume : this->writing.openVolumes)
 	{
 		if(openVolume.ownedWriter == &outputStream)
 		{
@@ -69,8 +84,23 @@ AutoPointer<FileSystemNode> FlatVolumesFileSystem::GetNode(const Path &path)
 
 AutoPointer<const FileSystemNode> FlatVolumesFileSystem::GetNode(const Path &path) const
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return AutoPointer<const FileSystemNode>();
+	if(this->index.HasNodeIndex(path))
+	{
+		uint32 index = this->index.GetNodeIndex(path);
+		const BackupNodeAttributes &attributes = this->index.GetNodeAttributes(index);
+
+		switch (attributes.Type())
+		{
+			case FileSystemNodeType::Directory:
+				return new FlatVolumesDirectory(index, this->index);
+			case FileSystemNodeType::File:
+				return new FlatVolumesFile(index, this->index, const_cast<FlatVolumesFileSystem &>(*this));
+			case FileSystemNodeType::Link:
+				return new FlatVolumesLink(index, this->index, *this);
+		}
+	}
+
+	return nullptr;
 }
 
 AutoPointer<Directory> FlatVolumesFileSystem::GetRoot()
@@ -96,6 +126,31 @@ void FlatVolumesFileSystem::Move(const Path &from, const Path &to)
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
 }
 
+UniquePointer<InputStream> FlatVolumesFileSystem::OpenLinkTargetAsStream(const Path& linkPath, bool verify) const
+{
+	uint32 nodeIndex = this->index.GetNodeIndex(linkPath);
+
+	FlatVolumesFile file(nodeIndex, this->index, const_cast<FlatVolumesFileSystem&>(*this));
+	return file.OpenForReading(verify);
+}
+
+uint32 FlatVolumesFileSystem::ReadBytes(const FlatVolumesBlockInputStream &reader, void *destination, uint64 volumeNumber, uint64 offset, uint32 count) const
+{
+	uint8* dest = static_cast<uint8 *>(destination);
+	while(count)
+	{
+		SeekableInputStream& inputStream = this->LockVolumeStream(volumeNumber);
+		inputStream.SetCurrentOffset(offset);
+		uint32 nBytesRead = inputStream.ReadBytes(dest, count);
+		this->UnlockVolumeStream(volumeNumber);
+
+		dest += nBytesRead;
+		count -= nBytesRead;
+	}
+
+	return dest - static_cast<uint8 *>(destination);
+}
+
 void FlatVolumesFileSystem::WriteBytes(const VolumesOutputStream& writer, const void *source, uint32 size)
 {
 	const uint8* src = static_cast<const uint8 *>(source);
@@ -112,6 +167,20 @@ void FlatVolumesFileSystem::WriteBytes(const VolumesOutputStream& writer, const 
 		size -= nBytesWritten;
 		this->BytesWereWrittenToVolume(&writer, offset, nBytesWritten);
 	}
+}
+
+void FlatVolumesFileSystem::WriteProtect()
+{
+	this->writing.openVolumes.Release(); //close open files
+
+	auto dir = OSFileSystem::GetInstance().GetDirectory(this->dirPath);
+	auto dirWalker = dir->WalkFiles();
+
+	for(const Path& relPath : dirWalker)
+	{
+		WriteProtectFile(this->dirPath / relPath);
+	}
+	WriteProtectFile(this->dirPath);
 }
 
 //Private methods
@@ -137,8 +206,8 @@ SeekableOutputStream &FlatVolumesFileSystem::FindStream(const OutputStream *writ
 {
 	AutoLock lock(this->writing.openVolumesMutex);
 
-	OpenVolume* free = nullptr;
-	for(OpenVolume& openVolume : this->writing.openVolumes)
+	OpenVolumeForWriting* free = nullptr;
+	for(OpenVolumeForWriting& openVolume : this->writing.openVolumes)
 	{
 		if(openVolume.ownedWriter == writer)
 		{
@@ -157,7 +226,13 @@ SeekableOutputStream &FlatVolumesFileSystem::FindStream(const OutputStream *writ
 		return *free->file;
 	}
 
-	OpenVolume newVolume;
+	if(!this->writing.createdDataDir)
+	{
+		OSFileSystem::GetInstance().GetDirectory(this->dirPath.GetParent())->CreateSubDirectory(this->dirPath.GetName());
+		this->writing.createdDataDir = true;
+	}
+
+	OpenVolumeForWriting newVolume;
 	newVolume.number = this->writing.nextVolumeNumber++;
 	newVolume.file = new FileOutputStream(this->dirPath / String::Number(newVolume.number));
 	newVolume.ownedWriter = writer;
@@ -171,16 +246,13 @@ SeekableOutputStream &FlatVolumesFileSystem::FindStream(const OutputStream *writ
 	return result;
 }
 
-void FlatVolumesFileSystem::WriteProtect()
+SeekableInputStream &FlatVolumesFileSystem::LockVolumeStream(uint64 volumeNumber) const
 {
-	this->writing.openVolumes.Release(); //close open files
+	OpenVolumeForReading &volume = (*this->reading.openVolumes)[volumeNumber];
+	volume.mutex.Lock();
 
-	auto dir = OSFileSystem::GetInstance().GetDirectory(this->dirPath);
-	auto dirWalker = dir->WalkFiles();
+	if(volume.file.IsNull())
+		volume.file = new FileInputStream(this->dirPath / String::Number(volumeNumber));
 
-	for(const Path& relPath : dirWalker)
-	{
-		WriteProtectFile(this->dirPath / relPath);
-	}
-	WriteProtectFile(this->dirPath);
+	return *volume.file;
 }

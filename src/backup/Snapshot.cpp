@@ -20,13 +20,31 @@
 #include "Snapshot.hpp"
 //Local
 #include "BackupNodeAttributes.hpp"
+#include "../Serialization.hpp"
+#include "VirtualSnapshotFilesystem.hpp"
+
+struct HashAlgorithmAndValue
+{
+	Crypto::HashAlgorithm hashAlgorithm;
+	String hashValue;
+};
+
+namespace StdXX::Serialization
+{
+	template <typename ArchiveType>
+	void Archive(ArchiveType& ar, HashAlgorithmAndValue& hashAlgorithmAndValue)
+	{
+		CustomArchive(ar, u8"algorithm", hashAlgorithmAndValue.hashAlgorithm);
+		ar & Binding(u8"hash", hashAlgorithmAndValue.hashValue);
+	}
+}
 
 //Constructors
 Snapshot::Snapshot()
 {
 	DateTime dateTime = DateTime::Now();
-	String snapshotName = u8"snapshot_" + dateTime.GetDate().ToISOString() + u8"_";
-	snapshotName += String::Number(dateTime.GetTime().GetHour(), 10, 2) + u8"_" + String::Number(dateTime.GetTime().GetMinute(), 10, 2) + u8"_" + String::Number(dateTime.GetTime().GetSecond(), 10, 2);
+	String snapshotName = u8"snapshot_" + dateTime.Date().ToISOString() + u8"_";
+	snapshotName += String::Number(dateTime.GetTime().Hours(), 10, 2) + u8"_" + String::Number(dateTime.GetTime().Minutes(), 10, 2) + u8"_" + String::Number(dateTime.GetTime().Seconds(), 10, 2);
 
 	this->name = snapshotName;
 	this->prev = nullptr;
@@ -34,7 +52,6 @@ Snapshot::Snapshot()
 
 	const Path& dataPath = InjectionContainer::Instance().Get<ConfigManager>().Config().dataPath;
 
-	OSFileSystem::GetInstance().GetDirectory(dataPath)->CreateSubDirectory(this->name);
 	this->fileSystem = new FlatVolumesFileSystem(dataPath / this->name, *this->index);
 }
 
@@ -43,28 +60,99 @@ Snapshot::Snapshot(const String& name, Serialization::XmlDeserializer& xmlDeseri
 	this->name = name;
 	this->prev = nullptr;
 	this->index = new BackupNodeIndex(xmlDeserializer);
+
+	const Path& dataPath = InjectionContainer::Instance().Get<ConfigManager>().Config().dataPath;
+	this->fileSystem = new FlatVolumesFileSystem(dataPath / this->name, *this->index);
 }
 
 //Public methods
-void Snapshot::AddNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex, ProcessStatus& processStatus)
+void Snapshot::BackupNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex, ProcessStatus& processStatus)
 {
 	const Path& filePath = sourceIndex.GetNodePath(index);
 	const FileSystemNodeAttributes& fileAttributes = sourceIndex.GetNodeAttributes(index);
 
-	this->index->AddNode(filePath, new BackupNodeAttributes(fileAttributes));
+	BackupNodeAttributes *attributes = new BackupNodeAttributes(fileAttributes);
+	this->index->AddNode(filePath, attributes);
 
-	if(fileAttributes.Type() == IndexableNodeType::File)
+	const Config &config = InjectionContainer::Instance().Get<ConfigManager>().Config();
+
+	UniquePointer<OutputStream> fileOutputStream = this->fileSystem->CreateFile(filePath);
+	BufferedOutputStream blockBuffer(*fileOutputStream, config.blockSize);
+	Crypto::HashingOutputStream hashingOutputStream(*fileOutputStream, config.hashAlgorithm);
+
+	UniquePointer<InputStream> inputStream;
+	if(fileAttributes.Type() == FileSystemNodeType::File)
+		inputStream = sourceIndex.OpenFile(filePath);
+	else if(fileAttributes.Type() == FileSystemNodeType::Link)
+		inputStream = sourceIndex.OpenLinkTargetAsStream(filePath);
+
+	uint64 readSize = inputStream->FlushTo(hashingOutputStream);
+	ASSERT_EQUALS(readSize, sourceIndex.GetNodeAttributes(index).Size());
+	hashingOutputStream.Flush();
+
+	UniquePointer<Crypto::HashFunction> hasher = hashingOutputStream.Reset();
+	hasher->Finish();
+	attributes->AddHashValue(config.hashAlgorithm, hasher->GetDigestString().ToLowercase());
+
+	processStatus.AddFinishedSize(fileAttributes.Size());
+}
+
+void Snapshot::BackupNodeMetadata(uint32 index, const BackupNodeAttributes& oldAttributes, const OSFileSystemNodeIndex &sourceIndex, ProcessStatus& processStatus)
+{
+	const Path& filePath = sourceIndex.GetNodePath(index);
+	const FileSystemNodeAttributes& newAttributes = sourceIndex.GetNodeAttributes(index);
+
+	BackupNodeAttributes* attributes = new BackupNodeAttributes(oldAttributes);
+	attributes->CopyFrom(newAttributes);
+	attributes->OwnsBlocks(false);
+	this->index->AddNode(filePath, attributes);
+
+	processStatus.AddFinishedSize(newAttributes.Size());
+}
+
+const Snapshot *Snapshot::FindDataSnapshot(uint32 nodeIndex) const
+{
+	if(!this->index->HasNodeData(nodeIndex))
 	{
-		UniquePointer<OutputStream> fileOutputStream = this->fileSystem->CreateFile(filePath);
-		BufferedOutputStream blockBuffer(*fileOutputStream, InjectionContainer::Instance().Get<ConfigManager>().Config().blockSize);
-
-		UniquePointer<InputStream> fileInputStream = sourceIndex.OpenFile(filePath);
-
-		fileInputStream->FlushTo(blockBuffer);
-		blockBuffer.Flush();
-
-		processStatus.AddFinishedSize(fileAttributes.Size());
+		const Path& filePath = this->index->GetNodePath(nodeIndex);
+		return this->prev->FindDataSnapshot(this->prev->index->GetNodeIndex(filePath));
 	}
+
+	return this;
+}
+
+void Snapshot::Mount(const Path& mountPoint) const
+{
+	VirtualSnapshotFilesystem vsf(*this);
+	OSFileSystem::GetInstance().MountReadOnly(mountPoint, vsf);
+}
+
+bool Snapshot::VerifyNode(const Path& path) const
+{
+	uint32 nodeIndex = this->index->GetNodeIndex(path);
+	const FileSystemNodeAttributes& attributes = this->index->GetNodeAttributes(nodeIndex);
+
+	//just read the file in once with verification
+	UniquePointer<InputStream> input;
+
+	if(attributes.Type() == FileSystemNodeType::Link)
+		input = this->fileSystem->OpenLinkTargetAsStream(path, true);
+	else
+		input = this->fileSystem->GetFile(path)->OpenForReading(true);
+	NullOutputStream nullOutputStream;
+	try
+	{
+		const uint64 readSize = input->FlushTo(nullOutputStream);
+		const FileSystemNodeAttributes& fileAttributes = ((FileSystemNodeIndex&)*this->index).GetNodeAttributes(this->index->GetNodeIndex(path));
+		if(readSize != fileAttributes.Size())
+			return false;
+	}
+	catch(ErrorHandling::VerificationFailedException&)
+	{
+		return false;
+	}
+
+	return true;
 }
 
 void Snapshot::Serialize() const
@@ -77,21 +165,22 @@ void Snapshot::Serialize() const
 	UniquePointer<Compressor> compressor = Compressor::Create(config.compressionStreamFormatType, config.compressionAlgorithm, indexFile, config.maxCompressionLevel);
 	BufferedOutputStream bufferedOutputStream(*compressor);
 	Crypto::HashingOutputStream hashingOutputStream(bufferedOutputStream, hashAlgorithm);
-	this->index->Serialize(hashingOutputStream);
-	compressor->Finalize();
+	Serialization::XmlSerializer xmlSerializer(hashingOutputStream);
+	this->index->Serialize(xmlSerializer);
 	hashingOutputStream.Flush();
+	compressor->Finalize();
 
 	UniquePointer<Crypto::HashFunction> hasher = hashingOutputStream.Reset();
 	hasher->Finish();
 
-	CommonFileFormats::JsonValue json = CommonFileFormats::JsonValue::Object();
-	json[u8"type"] = CommonFileFormats::JsonValue(configManager.MapHashAlgorithm(hashAlgorithm));
-	json[u8"hash"] = CommonFileFormats::JsonValue(hasher->GetDigestString().ToLowercase());
+	HashAlgorithmAndValue protection;
+	protection.hashAlgorithm = hashAlgorithm;
+	protection.hashValue = hasher->GetDigestString().ToLowercase();
 
 	FileOutputStream indexHashFile(this->IndexHashFilePath());
 	BufferedOutputStream bufferedOutputStream2(indexHashFile);
-	TextWriter textWriter(bufferedOutputStream2, TextCodecType::UTF8);
-	textWriter.WriteString(json.Dump());
+	Serialization::JSONSerializer protectionSerializer(bufferedOutputStream2);
+	protectionSerializer << protection;
 	bufferedOutputStream2.Flush();
 }
 
@@ -107,15 +196,14 @@ UniquePointer<Snapshot> Snapshot::Deserialize(const Path &path)
 
 		FileInputStream hashInputStream(path.GetParent() / title + String(c_hashFileSuffix));
 		BufferedInputStream hashBufferedInputStream(hashInputStream);
-		TextReader textReader(hashBufferedInputStream, TextCodecType::UTF8);
-		CommonFileFormats::JsonValue json = CommonFileFormats::ParseJson(textReader);
-		Crypto::HashAlgorithm hashAlgorithm = configManager.MapHashAlgorithm(json[u8"type"].StringValue());
-		String expectedHash = json[u8"hash"].StringValue();
+		Serialization::JSONDeserializer jsonDeserializer(hashBufferedInputStream);
+		HashAlgorithmAndValue protection;
+		jsonDeserializer >> protection;
 
 		FileInputStream fileInputStream(path);
 		BufferedInputStream bufferedInputStream(fileInputStream);
 		UniquePointer<Decompressor> decompressor = Decompressor::Create(CompressionStreamFormatType::lzma, bufferedInputStream, false);
-		Crypto::HashingInputStream hashingInputStream(*decompressor, hashAlgorithm);
+		Crypto::HashingInputStream hashingInputStream(*decompressor, protection.hashAlgorithm);
 
 		Serialization::XmlDeserializer deserializer(hashingInputStream);
 
@@ -126,7 +214,7 @@ UniquePointer<Snapshot> Snapshot::Deserialize(const Path &path)
 		hashFunction->Finish();
 		String got = hashFunction->GetDigestString().ToLowercase();
 
-		ASSERT(expectedHash == got, u8"DO THIS CORRECTLY");
+		ASSERT(protection.hashValue == got, u8"DO THIS CORRECTLY");
 
 		return snapshot;
 	}

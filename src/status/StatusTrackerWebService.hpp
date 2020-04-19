@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -16,11 +16,23 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
+#pragma once
 #include <Std++.hpp>
+using namespace StdXX;
 
-#include "../resources/ACJSWCL.js.hpp"
-#include "../resources/clean_light.css.hpp"
+//Forward declarations
+class WebStatusTracker;
 
-byte rsrc_index[] = {
-#include "../resources/index.htm"
+class StatusTrackerWebService : public HTTPServer
+{
+public:
+	//Constructor
+	StatusTrackerWebService(WebStatusTracker& statusTracker, uint16 port);
+
+private:
+	//Members
+	WebStatusTracker& statusTracker;
+
+	//Event handlers
+	void OnGETRequest(const Path& requestPath, const HTTPHeaders& requestHeaders, HTTPResponse& response) override;
 };

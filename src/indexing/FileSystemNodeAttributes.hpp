@@ -20,31 +20,42 @@
 #include <Std++.hpp>
 using namespace StdXX;
 
-enum class IndexableNodeType
-{
-	File,
-	Link
-};
-
 class FileSystemNodeAttributes
 {
 public:
 	//Constructors
-	inline FileSystemNodeAttributes(IndexableNodeType type, uint64 size, const Optional<DateTime>& lastModifiedTime)
+	inline FileSystemNodeAttributes(FileSystemNodeType type, uint64 size, const Optional<DateTime>& lastModifiedTime)
 	{
 		this->type = type;
 		this->size = size;
 		this->lastModifiedTime = lastModifiedTime;
 	}
 
+	inline FileSystemNodeAttributes(const AutoPointer<const Directory>& directory)
+	{
+		this->type = FileSystemNodeType::Directory;
+		this->Init(directory);
+		this->size = 0;
+	}
+
 	inline FileSystemNodeAttributes(const AutoPointer<const File>& file)
 	{
-		this->type = IndexableNodeType::File;
+		this->type = FileSystemNodeType::File;
 		this->Init(file);
 		this->size = file->GetSize();
 	}
 
+	inline FileSystemNodeAttributes(const AutoPointer<const Link>& link)
+	{
+		this->type = FileSystemNodeType::Link;
+		this->Init(link);
+		this->size = link->QueryInfo().storedSize;
+	}
+
 	FileSystemNodeAttributes(const FileSystemNodeAttributes& attributes) = default; //copy ctor
+
+	//Destructor
+	virtual ~FileSystemNodeAttributes() = default;
 
 	//Properties
 	inline const Optional<DateTime>& LastModifiedTime() const
@@ -57,22 +68,44 @@ public:
 		return this->size;
 	}
 
-	inline IndexableNodeType Type() const
+	inline FileSystemNodeType Type() const
 	{
 		return this->type;
 	}
 
+	//Operators
+	FileSystemNodeAttributes& operator=(const FileSystemNodeAttributes&) = default;
+
+	//Inline operators
+	inline bool operator==(const FileSystemNodeAttributes& other) const
+	{
+		return (this->type == other.type) && (this->size == other.size) && (this->lastModifiedTime == other.lastModifiedTime);
+	}
+
+	inline bool operator!=(const FileSystemNodeAttributes& other) const
+	{
+		return !(*this == other);
+	}
+
+	//Inline
+	inline void CopyFrom(const FileSystemNodeAttributes& other)
+	{
+		this->type = other.type;
+		this->size = other.size;
+		this->lastModifiedTime = other.lastModifiedTime;
+	}
+
 private:
 	//Members
-	IndexableNodeType type;
+	FileSystemNodeType type;
 	uint64 size;
 	Optional<DateTime> lastModifiedTime;
 
 	//Inline
 	inline void Init(const AutoPointer<const FileSystemNode>& node)
 	{
-		FileSystemNodeInfo info = node->QueryInfo();
+		const FileSystemNodeInfo info = node->QueryInfo();
 		if(info.lastModifiedTime.HasValue())
-			this->lastModifiedTime = info.lastModifiedTime->dt;
+			this->lastModifiedTime = info.lastModifiedTime;
 	}
 };

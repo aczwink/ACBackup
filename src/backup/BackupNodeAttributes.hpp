@@ -30,9 +30,10 @@ struct Block
 class BackupNodeAttributes : public FileSystemNodeAttributes
 {
 public:
-	//Constructor
-	inline BackupNodeAttributes(IndexableNodeType type, uint64 size, const Optional<DateTime>& lastModifiedTime, DynamicArray<Block>&& blocks)
-		: FileSystemNodeAttributes(type, size, lastModifiedTime), blocks(Forward<DynamicArray<Block>>(blocks))
+	//Constructors
+	inline BackupNodeAttributes(FileSystemNodeType type, uint64 size, const Optional<DateTime>& lastModifiedTime, bool ownsBlocks, DynamicArray<Block>&& blocks, Map<Crypto::HashAlgorithm, String>&& hashes)
+		: FileSystemNodeAttributes(type, size, lastModifiedTime), ownsBlocks(ownsBlocks),
+		blocks(Forward<DynamicArray<Block>>(blocks)), hashes(Forward<Map<Crypto::HashAlgorithm, String>>(hashes))
 	{
 	}
 
@@ -40,16 +41,49 @@ public:
 	{
 	}
 
+	BackupNodeAttributes(const BackupNodeAttributes& attributes) = default;
+
 	//Properties
 	inline const DynamicArray<Block>& Blocks() const
 	{
 		return this->blocks;
 	}
 
+	inline const String& Hash(Crypto::HashAlgorithm hashAlgorithm) const
+	{
+		return this->hashes[hashAlgorithm];
+	}
+
+	inline const Map<Crypto::HashAlgorithm, String>& HashValues() const
+	{
+		return this->hashes;
+	}
+
+	inline bool OwnsBlocks() const
+	{
+		return this->ownsBlocks;
+	}
+
+	inline void OwnsBlocks(bool value)
+	{
+		this->ownsBlocks = false;
+	}
+
 	//Methods
 	void AddBlock(const Block& block);
+	uint64 ComputeSumOfBlockSizes() const;
+
+	//Inline
+	inline void AddHashValue(Crypto::HashAlgorithm hashAlgorithm, const String& hashValue)
+	{
+		if(this->hashes.Contains(hashAlgorithm))
+			ASSERT_EQUALS(this->hashes[hashAlgorithm], hashValue);
+		this->hashes[hashAlgorithm] = hashValue;
+	}
 
 private:
 	//Members
+	bool ownsBlocks;
 	DynamicArray<Block> blocks;
+	Map<Crypto::HashAlgorithm, String> hashes;
 };

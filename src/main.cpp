@@ -31,14 +31,39 @@ static void PrintManual()
 
             << u8"-i, --init" << endl
             << u8"  " << u8"Initialize new empty backup directory in current working directory." << endl
-            << endl;
+            << endl
+
+			<< u8"-m snapshotName mountPoint, --mount snapshotName mountPoint" << endl
+			<< u8"  " << u8"Mounts a snapshot into the filesystem. The mounted filesystem can only be read but not be modified." << endl
+			<< endl
+
+			<< u8"-v snapshotName, --verify-snapshot snapshotName" << endl
+			<< u8"  " << u8"Verifies the integrity of all data including metadata of a snapshot." << endl
+			<< endl
+
+			<< u8"-V snapshotName, --verify-snapshot-fully snapshotName" << endl
+			<< u8"  " << u8"Verifies the integrity of all data including metadata of a snapshot including references to older snapshots." << endl
+			<< endl
+
+			<< u8"--verify-all-snapshots" << endl
+			<< u8"  " << u8"Verifies the integrity of all data including metadata of all snapshots (i.e. the whole history)." << endl
+			<< endl
+
+			<< u8"--verify-newest-snapshot" << endl
+			<< u8"  " << u8"Verifies the integrity of all data including metadata of the newest snapshot including references to older snapshots." << endl
+			<< endl;
 }
 
 int32 Main(const String& programName, const FixedArray<String>& args)
 {
     //TODO debugging
+    String newestSnapshot = "snapshot_2020-04-19_13_59_08";
 	CommandInit(String(u8"/home/amir/opt"));
-	CommandAddSnapshot();
+	//CommandAddSnapshot();
+	CommandMountSnapshot(newestSnapshot, String(u8"/home/amir/mount"));
+	//CommandVerifyAllSnapshots();
+	//CommandVerifyNewestSnapshot();
+	//CommandVerifySnapshot(u8"snapshot_2020-04-14_18_20_20", false);
     //TODO end debugging
 
     PrintManual();

@@ -18,6 +18,8 @@
  */
 //Class header
 #include "ProcessStatus.hpp"
+//Namespaces
+using namespace StdXX::CommonFileFormats;
 
 //Public methods
 Optional <DateTime> ProcessStatus::ComputeExpectedEndTime() const
@@ -34,4 +36,34 @@ Optional <DateTime> ProcessStatus::ComputeExpectedEndTime() const
 		return this->startTime.AddMilliSeconds(passed + leftTime);
 	}
 	return {};
+}
+
+JsonValue ProcessStatus::ToJSON() const
+{
+	JsonValue obj = JsonValue::Object();
+
+	AutoLock lock(this->mutex);
+
+	uint64 duration_microsecs = this->GetDurationInMicroseconds();
+
+	obj[u8"title"] = this->title;
+	obj[u8"nFinishedFiles"] = this->nFinishedFiles;
+	obj[u8"nFiles"] = this->nFiles;
+	obj[u8"totalSize"] = this->totalSize;
+	obj[u8"doneSize"] = this->doneSize;
+	obj[u8"startTime"] = this->startTime.ToISOString();
+	obj[u8"duration_millisecs"] = duration_microsecs / 1000;
+	if(this->isEndDeterminate)
+		obj[u8"progress"] = this->doneSize / float64(this->totalSize);
+	else
+		obj[u8"progress"] = this->endTime.HasValue();
+
+	if(this->endTime.HasValue())
+		obj[u8"endTime"] = this->endTime->ToISOString();
+	else
+	{
+		obj[u8"expectedEndTime"] = this->ComputeExpectedEndTimeAsString();
+	}
+
+	return obj;
 }

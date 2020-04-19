@@ -1,8 +1,8 @@
 
 //Local
-#include "../_legacy/FlatContainerIndex.hpp"
-#include "../KeyDerivation.hpp"
-#include "../KeyVerificationFailedException.hpp"
+#include "../encryption/FlatContainerIndex.hpp"
+#include "../encryption/KeyDerivation.hpp"
+#include "../encryption/KeyVerificationFailedException.hpp"
 #include "../BackupContainerIndex.hpp"
 
 //Constructor
@@ -63,12 +63,6 @@ BackupManager::BackupManager(const Path &path, const Config& config), config(con
 	}
 }
 
-//Destructor
-BackupManager::~BackupManager()
-{
-	this->DropSnapshots();
-}
-
 //Public methods
 void BackupManager::AddSnapshot(const FileSystemNodeIndex &index, StatusTracker& tracker)
 {
@@ -76,9 +70,6 @@ void BackupManager::AddSnapshot(const FileSystemNodeIndex &index, StatusTracker&
 	{
 		if(diffNodeIndices.Contains(i))
 		{
-			const int8 maxCompressionLevel = this->config.MaxCompressionLevel();
-			const uint64 memLimit = this->config.CompressionMemoryLimit();
-
 			this->threadPool.EnqueueTask([this, &index, &snapshot, &process, i, maxCompressionLevel, memLimit]()
 			{
 				switch(fileAttributes.Type())
@@ -91,9 +82,6 @@ void BackupManager::AddSnapshot(const FileSystemNodeIndex &index, StatusTracker&
 						this->AddCompressionRateSample(ext, compressionRate);
 					}
 					break;
-					case IndexableNodeType::Link:
-						snapshot->BackupLink(filePath);
-						break;
 				}
 			});
 		}
@@ -129,57 +117,6 @@ void BackupManager::RestoreSnapshot(const Snapshot &snapshot, const Path &target
 	}
 
 	this->threadPool.WaitForAllTasksToComplete();
-}
-
-void BackupManager::VerifySnapshot(const Snapshot &snapshot, StatusTracker& tracker) const
-{
-	const BackupContainerIndex& index = snapshot.Index();
-
-	DynamicArray<uint32> failedFiles;
-	Mutex failedFilesLock;
-
-	ProcessStatus& process = tracker.AddProcessStatusTracker(u8"Verifying snapshot: " + snapshot.Name(),
-	                                                         index.GetNumberOfNodes(), index.ComputeTotalSize());
-	for(uint32 i = 0; i < index.GetNumberOfNodes(); i++)
-	{
-		this->threadPool.EnqueueTask([this, &snapshot, i, &process, &failedFiles, &failedFilesLock](){
-			BackupContainerIndex* dataIndex = snapshot.FindDataIndex(i);
-
-			//compute digest
-			UniquePointer<InputStream> input = dataIndex->OpenFileForReading(snapshot.Index().GetNodePath(i));
-			UniquePointer<Crypto::HashFunction> hasher = Crypto::HashFunction::CreateInstance(Crypto::HashAlgorithm::MD5);
-			uint64 readSize = hasher->Update(*input);
-
-			hasher->Finish();
-			String digestString = hasher->GetDigestString().ToLowercase();
-
-			//checks
-			const FileSystemNodeAttributes& fileAttributes = dataIndex->GetNodeAttributes(i);
-			if((readSize != fileAttributes.Size()) || (fileAttributes.GetDigest(config.HashAlgorithm()) != digestString))
-			{
-				failedFilesLock.Lock();
-				failedFiles.Push(i);
-				failedFilesLock.Unlock();
-				return;
-			}
-
-			process.AddFinishedSize(fileAttributes.Size());
-			process.IncFinishedCount();
-		});
-	}
-
-	this->threadPool.WaitForAllTasksToComplete();
-
-	if(failedFiles.IsEmpty())
-		process.Finished();
-	else
-	{
-		for(uint32 fileIndex : failedFiles)
-		{
-			const Path& filePath = index.GetNodePath(fileIndex);
-			stdErr << u8"File '" << filePath << u8"' is corrupt." << endl;
-		}
-	}
 }
 
 //Private methods

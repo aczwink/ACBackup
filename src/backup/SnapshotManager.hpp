@@ -28,21 +28,45 @@ public:
 	//Constructor
 	SnapshotManager();
 
+	//Properties
+	inline const DynamicArray<UniquePointer<Snapshot>>& Snapshots() const
+	{
+		return this->snapshots;
+	}
+
 	//Methods
 	void AddSnapshot(const OSFileSystemNodeIndex& sourceIndex);
+	DynamicArray<uint32> VerifySnapshot(const Snapshot& snapshot, bool full) const;
+
+	//Inline
+	inline const Snapshot* FindSnapshot(const String& name) const
+	{
+		for(const auto& snapshot : this->snapshots)
+		{
+			if(snapshot->Name() == name)
+				return snapshot.operator->();
+		}
+		return nullptr;
+	}
+
+	inline const Snapshot& NewestSnapshot() const
+	{
+		return *this->snapshots.Last();
+	}
 
 private:
 	//Members
 	DynamicArray<UniquePointer<Snapshot>> snapshots;
 
 	//Methods
-	BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& index);
+	Map<uint32, NodeDifference> ComputeDifference(const OSFileSystemNodeIndex& sourceIndex, bool updateDefault) const;
+	void EnsureNoDifferenceExists(const OSFileSystemNodeIndex& sourceIndex) const;
 	DynamicArray<Path> ListPathsInIndexDirectory();
 	void ReadInSnapshots();
-	void VerifySnapshot(const Snapshot& snapshot) const;
+	Map<uint32, NodeDifference> ResolveDifferences(const BackupNodeIndex& leftIndex, const OSFileSystemNodeIndex& rightIndex, const BinaryTreeSet<uint32>& leftToRightDiffs, const BinaryTreeSet<uint32>& rightToLeftDiffs, bool updateDefault) const;
 
 	//Inline
-	inline const FileSystemNodeIndex* LastIndex() const
+	inline const BackupNodeIndex* LastIndex() const
 	{
 		if(this->snapshots.IsEmpty())
 			return nullptr;

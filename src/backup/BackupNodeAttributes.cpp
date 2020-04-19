@@ -22,6 +22,7 @@
 //Public methods
 void BackupNodeAttributes::AddBlock(const Block &block)
 {
+	this->ownsBlocks = true;
 	if(!this->blocks.IsEmpty())
 	{
 		Block& lastBlock = this->blocks.Last();
@@ -32,4 +33,12 @@ void BackupNodeAttributes::AddBlock(const Block &block)
 		}
 	}
 	this->blocks.Push(block);
+}
+
+uint64 BackupNodeAttributes::ComputeSumOfBlockSizes() const
+{
+	uint64 sum = 0;
+	for(const Block& block : this->blocks)
+		sum += block.size;
+	return sum;
 }

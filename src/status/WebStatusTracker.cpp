@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -17,25 +17,25 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 //Class header
-#include "StatusTracker.hpp"
+#include "WebStatusTracker.hpp"
 
-static StatusTracker* g_tracker = nullptr;
+static WebStatusTracker* g_tracker = nullptr;
 static int32 NetworkThreadMain()
 {
-	stdOut << u8"Listening on 0.0.0.0:" << g_tracker->GetPort() << endl;
-	g_tracker->GetServer().Serve();
+	stdOut << u8"Listening on 0.0.0.0:" << g_tracker->HTTPServer().GetBoundPort() << endl;
+	g_tracker->HTTPServer().Serve();
 	return EXIT_SUCCESS;
 }
 
 //Constructor
-StatusTracker::StatusTracker(uint16 port) : httpServer(*this, port), thread(NetworkThreadMain)
+WebStatusTracker::WebStatusTracker(uint16 port) : httpServer(*this, port), thread(NetworkThreadMain)
 {
 	g_tracker = this;
 	this->thread.Start();
 }
 
 //Destructor
-StatusTracker::~StatusTracker()
+WebStatusTracker::~WebStatusTracker()
 {
 	Sleep(uint64(2) * 1000 * 1000 * 1000); //Wait so that status trackers can get the result
 	stdOut << u8"Shutting down server..." << endl;
