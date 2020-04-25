@@ -67,23 +67,23 @@ UniquePointer<OutputStream> FlatVolumesFileSystem::CreateFile(const Path &filePa
 
 void FlatVolumesFileSystem::CreateLink(const Path &linkPath, const Path &linkTargetPath)
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 }
 
 bool FlatVolumesFileSystem::Exists(const Path &path) const
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 	return false;
 }
 
 void FlatVolumesFileSystem::Flush()
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 }
 
 AutoPointer<Node> FlatVolumesFileSystem::GetNode(const Path &path)
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 	return AutoPointer<Node>();
 }
 
@@ -110,7 +110,7 @@ AutoPointer<const Node> FlatVolumesFileSystem::GetNode(const Path &path) const
 
 void FlatVolumesFileSystem::Move(const Path &from, const Path &to)
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 }
 
 UniquePointer<InputStream> FlatVolumesFileSystem::OpenLinkTargetAsStream(const Path& linkPath, bool verify) const
@@ -174,7 +174,7 @@ void FlatVolumesFileSystem::WriteProtect()
 
 SpaceInfo FlatVolumesFileSystem::QuerySpace() const
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 	return SpaceInfo();
 }
 

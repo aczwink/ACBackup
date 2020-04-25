@@ -74,36 +74,36 @@ BinaryTreeSet<uint32> NodeIndexDifferenceResolver::ComputeDifference(const FileS
 	ProcessStatus& process = statusTracker.AddProcessStatusTracker(u8"Computing index differences", leftIndex.GetNumberOfNodes(), leftIndex.ComputeTotalSize());
 	for(uint32 i = 0; i < leftIndex.GetNumberOfNodes(); i++)
 	{
-		//threadPool.EnqueueTask([]() //TODO: reenable this
-		//{
-		const Path& filePath = leftIndex.GetNodePath(i);
-		const FileSystemNodeAttributes& fileAttributes = leftIndex.GetNodeAttributes(i);
-
-		bool include = false;
-		if(rightIndex.HasNodeIndex(filePath))
+		threadPool.EnqueueTask([&leftIndex, &rightIndex, &diff, &diffLock, &process, i]()
 		{
-			//both indexes have this node
-			uint32 otherIndex = rightIndex.GetNodeIndex(filePath);
-			const FileSystemNodeAttributes& otherFileAttributes = rightIndex.GetNodeAttributes(otherIndex);
-			if(fileAttributes != otherFileAttributes)
+			const Path& filePath = leftIndex.GetNodePath(i);
+			const FileSystemNodeAttributes& fileAttributes = leftIndex.GetNodeAttributes(i);
+
+			bool include = false;
+			if(rightIndex.HasNodeIndex(filePath))
+			{
+				//both indexes have this node
+				uint32 otherIndex = rightIndex.GetNodeIndex(filePath);
+				const FileSystemNodeAttributes& otherFileAttributes = rightIndex.GetNodeAttributes(otherIndex);
+				if(fileAttributes != otherFileAttributes)
+					include = true;
+			}
+			else
+			{
+				//only we have this node
 				include = true;
-		}
-		else
-		{
-			//only we have this node
-			include = true;
-		}
+			}
 
-		if(include)
-		{
-			diffLock.Lock();
-			diff.Insert(i);
-			diffLock.Unlock();
-		}
+			if(include)
+			{
+				diffLock.Lock();
+				diff.Insert(i);
+				diffLock.Unlock();
+			}
 
-		process.AddFinishedSize(fileAttributes.Size());
-		process.IncFinishedCount();
-		//});
+			process.AddFinishedSize(fileAttributes.Size());
+			process.IncFinishedCount();
+		});
 	}
 	threadPool.WaitForAllTasksToComplete();
 	process.Finished();
@@ -123,41 +123,41 @@ void NodeIndexDifferenceResolver::ComputeNodeDifferences(NodeIndexDifferences& n
 	ProcessStatus& process = statusTracker.AddProcessStatusTracker(u8"Indexing potentially new nodes", rightToLeftDiffs.GetNumberOfElements(), rightIndex.ComputeTotalSize(rightToLeftDiffs));
 	for(uint32 index : rightToLeftDiffs)
 	{
-		//threadPool.EnqueueTask([]() //TODO: implement me
-		//{
-		const FileSystemNodeAttributes &attributes = rightIndex.GetNodeAttributes(index);
-		switch(attributes.Type())
+		threadPool.EnqueueTask([this, index, &leftIndex, &rightIndex, &nodeIndexDifferences, &nodeDifferencesLock, &process]()
 		{
-			case NodeType::Directory:
-				nodeDifferencesLock.Lock();
-				nodeIndexDifferences.differentMetadata.Insert(index);
-				nodeDifferencesLock.Unlock();
-				break;
-			case NodeType::File:
-			case NodeType::Link:
+			const FileSystemNodeAttributes &attributes = rightIndex.GetNodeAttributes(index);
+			switch(attributes.Type())
 			{
-				String hash = this->RetrieveNodeHash(index, rightIndex);
-				uint32 leftNodeIndexByHash = leftIndex.FindNodeIndexByHash(hash);
-
-				nodeDifferencesLock.Lock();
-				if(leftNodeIndexByHash == Unsigned<uint32>::Max()) //could not find hash value
-					nodeIndexDifferences.differentData.Insert(index);
-				else
+				case NodeType::Directory:
+					nodeDifferencesLock.Lock();
+					nodeIndexDifferences.differentMetadata.Insert(index);
+					nodeDifferencesLock.Unlock();
+					break;
+				case NodeType::File:
+				case NodeType::Link:
 				{
-					const Path &filePath = rightIndex.GetNodePath(index);
-					if(leftIndex.GetNodePath(leftNodeIndexByHash) == filePath) //same node and same hash, only update metadata
-						nodeIndexDifferences.differentMetadata.Insert(index);
-					else //same hash but different node -> moved node
-						nodeIndexDifferences.moved.Insert(index, leftNodeIndexByHash);
-				}
-				nodeDifferencesLock.Unlock();
-			}
-				break;
-		}
+					String hash = this->RetrieveNodeHash(index, rightIndex);
+					uint32 leftNodeIndexByHash = leftIndex.FindNodeIndexByHash(hash);
 
-		process.IncFileCount();
-		process.AddFinishedSize(attributes.Size());
-		//});
+					nodeDifferencesLock.Lock();
+					if(leftNodeIndexByHash == Unsigned<uint32>::Max()) //could not find hash value
+						nodeIndexDifferences.differentData.Insert(index);
+					else
+					{
+						const Path &filePath = rightIndex.GetNodePath(index);
+						if(leftIndex.GetNodePath(leftNodeIndexByHash) == filePath) //same node and same hash, only update metadata
+							nodeIndexDifferences.differentMetadata.Insert(index);
+						else //same hash but different node -> moved node
+							nodeIndexDifferences.moved.Insert(index, leftNodeIndexByHash);
+					}
+					nodeDifferencesLock.Unlock();
+				}
+					break;
+			}
+
+			process.IncFileCount();
+			process.AddFinishedSize(attributes.Size());
+		});
 	}
 	threadPool.WaitForAllTasksToComplete();
 	process.Finished();
@@ -199,5 +199,6 @@ String NodeIndexDifferenceResolver::RetrieveNodeHash(uint32 nodeIndex, const Fil
 	if(osFileSystemNodeIndex)
 		return osFileSystemNodeIndex->ComputeNodeHash(nodeIndex);
 
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
+	RAISE(ErrorHandling::IllegalCodePathError);
 }

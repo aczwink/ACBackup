@@ -24,7 +24,7 @@
 //Public methods
 void FlatVolumesLink::ChangePermissions(const NodePermissions &newPermissions)
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 }
 
 NodeInfo FlatVolumesLink::QueryInfo() const

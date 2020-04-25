@@ -21,8 +21,6 @@
 
 void UnprotectFile(const Path& filePath)
 {
-	return; //TODO: reintegrate this, also test if a snapshot can be created if the dir is locked (i.e. if unlocking and so on works)
-
 	AutoPointer<Node> node = OSFileSystem::GetInstance().GetNode(filePath);
 	NodeInfo nodeInfo = node->QueryInfo();
 
@@ -36,14 +34,12 @@ void UnprotectFile(const Path& filePath)
 	}
 	else
 	{
-		NOT_IMPLEMENTED_ERROR; //TODO: implement me
+		NOT_IMPLEMENTED_ERROR; //implement me
 	}
 }
 
 void WriteProtectFile(const Path& filePath)
 {
-	return; //TODO: reintegrate this, also test if a snapshot can be created if the dir is locked (i.e. if unlocking and so on works)
-
 	AutoPointer<Node> node = OSFileSystem::GetInstance().GetNode(filePath);
 	NodeInfo nodeInfo = node->QueryInfo();
 
@@ -59,6 +55,6 @@ void WriteProtectFile(const Path& filePath)
 	}
 	else
 	{
-		NOT_IMPLEMENTED_ERROR; //TODO: implement me
+		NOT_IMPLEMENTED_ERROR; //implement me
 	}
 }

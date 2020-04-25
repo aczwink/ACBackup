@@ -22,7 +22,7 @@
 //Public methods
 bool VirtualSnapshotFilesystem::Exists(const Path &path) const
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 	return false;
 }
 
@@ -45,6 +45,6 @@ AutoPointer<const Node> VirtualSnapshotFilesystem::GetNode(const Path &path) con
 
 SpaceInfo VirtualSnapshotFilesystem::QuerySpace() const
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 	return SpaceInfo();
 }

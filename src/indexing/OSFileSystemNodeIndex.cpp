@@ -23,6 +23,7 @@
 #include "../status/StatusTracker.hpp"
 #include "LinkPointsOutOfIndexDirException.hpp"
 #include "../config/ConfigManager.hpp"
+#include "../StreamPipingFailedException.hpp"
 
 //Constructor
 OSFileSystemNodeIndex::OSFileSystemNodeIndex(const Path &path) : basePath(path)
@@ -52,7 +53,8 @@ String OSFileSystemNodeIndex::ComputeNodeHash(uint32 nodeIndex) const
 	uint64 readSize = hashingInputStream.FlushTo(nullOutputStream);
 	UniquePointer<Crypto::HashFunction> hasher = hashingInputStream.Reset();
 	hasher->Finish();
-	ASSERT_EQUALS(readSize, attributes.Size());
+	if(readSize != attributes.Size())
+		throw StreamPipingFailedException(nodePath);
 
 	return hasher->GetDigestString().ToLowercase();
 }

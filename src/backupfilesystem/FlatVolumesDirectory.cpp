@@ -84,40 +84,40 @@ NodeInfo FlatVolumesDirectory::QueryInfo() const
 //NOT IMPLEMENTED
 StdXX::UniquePointer<StdXX::OutputStream> FlatVolumesDirectory::CreateFile(const StdXX::String &name)
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 	return StdXX::UniquePointer<StdXX::OutputStream>();
 }
 
 void FlatVolumesDirectory::CreateSubDirectory(const StdXX::String &name)
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 }
 
 bool FlatVolumesDirectory::Exists(const Path &path) const
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 	return false;
 }
 
 StdXX::AutoPointer<Node> FlatVolumesDirectory::GetChild(const StdXX::String &name)
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 	return StdXX::AutoPointer<Node>();
 }
 
 StdXX::AutoPointer<const Node> FlatVolumesDirectory::GetChild(const StdXX::String &name) const
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 	return StdXX::AutoPointer<const Node>();
 }
 
 bool FlatVolumesDirectory::IsEmpty() const
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 	return false;
 }
 
 void FlatVolumesDirectory::ChangePermissions(const NodePermissions &newPermissions)
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 }

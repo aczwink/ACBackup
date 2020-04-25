@@ -60,6 +60,6 @@ uint32 FlatVolumesBlockInputStream::ReadBytes(void *destination, uint32 count)
 
 uint32 FlatVolumesBlockInputStream::Skip(uint32 nBytes)
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 	return 0;
 }

@@ -50,13 +50,13 @@ UniquePointer<InputStream> FlatVolumesFile::OpenForReading(bool verify) const
 
 UniquePointer<OutputStream> FlatVolumesFile::OpenForWriting()
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 	return UniquePointer<OutputStream>();
 }
 
 void FlatVolumesFile::ChangePermissions(const NodePermissions &newPermissions)
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	NOT_IMPLEMENTED_ERROR; //implement me
 }
 
 NodeInfo FlatVolumesFile::QueryInfo() const

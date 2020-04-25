@@ -90,7 +90,7 @@ float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileSystemNod
 
 UniquePointer<InputStream> FlatContainerIndex::OpenFileForReading(const Path& filePath) const
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: REIMPLEMENT ME
+	NOT_IMPLEMENTED_ERROR; //REIMPLEMENT ME
 	return nullptr;
 	/*
 	AutoPointer<const File> file = this->reading.dataContainer->GetFile(filePath);

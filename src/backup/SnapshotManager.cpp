@@ -46,12 +46,11 @@ void SnapshotManager::AddSnapshot(const OSFileSystemNodeIndex& sourceIndex)
 	StaticThreadPool& threadPool = InjectionContainer::Instance().Get<StaticThreadPool>();
 	for(uint32 index : diff.differentData)
 	{
-		//TODO: reenable this
-		//threadPool.EnqueueTask([&snapshot, i, &index, &process]()
-		//{
-		snapshot->BackupNode(index, sourceIndex, process);
-		process.IncFinishedCount();
-		//});
+		threadPool.EnqueueTask([&snapshot, &index, &sourceIndex, &process]()
+		{
+			snapshot->BackupNode(index, sourceIndex, process);
+			process.IncFinishedCount();
+		});
 	}
 
 	for(uint32 index : diff.differentMetadata)
@@ -108,26 +107,25 @@ DynamicArray<uint32> SnapshotManager::VerifySnapshot(const Snapshot &snapshot, b
 	Mutex failedFilesLock;
 	for(uint32 i = 0; i < index.GetNumberOfNodes(); i++)
 	{
-		//TODO: reenable this
-		//threadPool.EnqueueTask([&snapshot, i, &index, &process]()
-		//{
-		const BackupNodeAttributes &nodeAttributes = snapshot.Index().GetNodeAttributes(i);
-		if(nodeAttributes.Type() == NodeType::Directory)
-			continue;
-		Path realNodePath;
-		const Snapshot* dataSnapshot = snapshot.FindDataSnapshot(i, realNodePath);
-		if(full || (dataSnapshot == &snapshot))
+		threadPool.EnqueueTask([&snapshot, i, full, &index, &process, &failedNodes, &failedFilesLock]()
 		{
-			if (!dataSnapshot->VerifyNode(realNodePath))
+			const BackupNodeAttributes &nodeAttributes = snapshot.Index().GetNodeAttributes(i);
+			if(nodeAttributes.Type() == NodeType::Directory)
+				return;
+			Path realNodePath;
+			const Snapshot* dataSnapshot = snapshot.FindDataSnapshot(i, realNodePath);
+			if(full || (dataSnapshot == &snapshot))
 			{
-				failedFilesLock.Lock();
-				failedNodes.Push(i);
-				failedFilesLock.Unlock();
+				if (!dataSnapshot->VerifyNode(realNodePath))
+				{
+					failedFilesLock.Lock();
+					failedNodes.Push(i);
+					failedFilesLock.Unlock();
+				}
+				process.AddFinishedSize(nodeAttributes.Size());
+				process.IncFinishedCount();
 			}
-			process.AddFinishedSize(nodeAttributes.Size());
-			process.IncFinishedCount();
-		}
-		//});
+		});
 	}
 
 	threadPool.WaitForAllTasksToComplete();
@@ -201,5 +199,5 @@ void SnapshotManager::EnsureNoDifferenceExists(const OSFileSystemNodeIndex &sour
 {
 	const NodeIndexDifferences diffNodeIndicesNew = this->ComputeDifference(sourceIndex, false);
 	if(!( diffNodeIndicesNew.deleted.IsEmpty() || diffNodeIndicesNew.differentData.IsEmpty() || diffNodeIndicesNew.differentMetadata.IsEmpty()|| diffNodeIndicesNew.moved.IsEmpty() ))
-		NOT_IMPLEMENTED_ERROR; //TODO: implement me, after the backup there should be no differences to source index
+		throw ErrorHandling::VerificationFailedException();
 }

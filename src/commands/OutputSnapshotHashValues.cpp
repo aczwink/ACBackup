@@ -20,6 +20,7 @@
 #include "../config/ConfigManager.hpp"
 #include "../backup/SnapshotManager.hpp"
 #include "../Serialization.hpp"
+#include "../StreamPipingFailedException.hpp"
 
 static String GenerateHashValue(uint32 i, const BackupNodeIndex& index, Crypto::HashAlgorithm hashAlgorithm, const Snapshot& snapshot)
 {
@@ -40,7 +41,8 @@ static String GenerateHashValue(uint32 i, const BackupNodeIndex& index, Crypto::
 	Crypto::HashingOutputStream hashingOutputStream(nullOutputStream, hashAlgorithm);
 
 	uint64 readSize = input->FlushTo(hashingOutputStream);
-	ASSERT_EQUALS(readSize, attributes.Size());
+	if(readSize != attributes.Size())
+		throw StreamPipingFailedException(realNodePath);
 
 	UniquePointer<Crypto::HashFunction> hasher = hashingOutputStream.Reset();
 	hasher->Finish();

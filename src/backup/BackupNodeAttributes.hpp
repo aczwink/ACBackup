@@ -100,7 +100,10 @@ public:
 	inline void AddHashValue(Crypto::HashAlgorithm hashAlgorithm, const String& hashValue)
 	{
 		if(this->hashes.Contains(hashAlgorithm))
-			ASSERT_EQUALS(this->hashes[hashAlgorithm], hashValue);
+		{
+			if(this->hashes[hashAlgorithm] != hashValue)
+				throw ErrorHandling::VerificationFailedException();
+		}
 		this->hashes[hashAlgorithm] = hashValue;
 	}
 

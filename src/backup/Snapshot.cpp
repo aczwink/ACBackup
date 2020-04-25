@@ -23,6 +23,7 @@
 #include "../Serialization.hpp"
 #include "VirtualSnapshotFilesystem.hpp"
 #include "../config/CompressionStatistics.hpp"
+#include "../StreamPipingFailedException.hpp"
 
 struct HashAlgorithmAndValue
 {
@@ -130,7 +131,8 @@ void Snapshot::BackupNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex
 	}
 
 	uint64 readSize = hashingInputStream.FlushTo(*outputStream);
-	ASSERT_EQUALS(readSize, sourceIndex.GetNodeAttributes(index).Size());
+	if(readSize != sourceIndex.GetNodeAttributes(index).Size())
+		throw StreamPipingFailedException(filePath);
 	if(!compressor.IsNull())
 		compressor->Finalize();
 	outputStream->Flush();
@@ -193,49 +195,50 @@ void Snapshot::Restore(const Path &restorePoint) const
 			this->Index().GetNumberOfNodes(), this->Index().ComputeTotalSize());
 	for(uint32 i = 0; i < this->Index().GetNumberOfNodes(); i++)
 	{
-		//threadPool.EnqueueTask([]() //TODO: ENABLE THIS
-		//{
-		const BackupNodeAttributes& attributes = this->index->GetNodeAttributes(i);
-		const Path& filePath = this->Index().GetNodePath(i);
-		Path nodeRestorePath = restorePoint.String() + filePath.String();
-		if(nodeRestorePath.GetName().IsEmpty())
-			nodeRestorePath = nodeRestorePath.GetParent();
-
-		switch(attributes.Type())
+		threadPool.EnqueueTask([this, i, &restorePoint, &process]()
 		{
-			case NodeType::Directory:
-				OSFileSystem::GetInstance().GetDirectory(nodeRestorePath.GetParent())->CreateSubDirectory(nodeRestorePath.GetName());
+			const BackupNodeAttributes& attributes = this->index->GetNodeAttributes(i);
+			const Path& filePath = this->Index().GetNodePath(i);
+			Path nodeRestorePath = restorePoint.String() + filePath.String();
+			if(nodeRestorePath.GetName().IsEmpty())
+				nodeRestorePath = nodeRestorePath.GetParent();
+
+			switch(attributes.Type())
+			{
+				case NodeType::Directory:
+					OSFileSystem::GetInstance().GetDirectory(nodeRestorePath.GetParent())->CreateSubDirectory(nodeRestorePath.GetName());
+					break;
+				case NodeType::File:
+				{
+					Path realNodePath;
+					const Snapshot* snapshot = this->FindDataSnapshot(i, realNodePath);
+					UniquePointer<InputStream> input = snapshot->fileSystem->GetFile(realNodePath)->OpenForReading(true);
+					FileOutputStream output(nodeRestorePath);
+
+					//write
+					uint64 flushedSize = input->FlushTo(output);
+					if(flushedSize != attributes.Size())
+						throw StreamPipingFailedException(filePath);
+
+					process.AddFinishedSize(flushedSize);
+				}
 				break;
-			case NodeType::File:
-			{
-				Path realNodePath;
-				const Snapshot* snapshot = this->FindDataSnapshot(i, realNodePath);
-				UniquePointer<InputStream> input = snapshot->fileSystem->GetFile(realNodePath)->OpenForReading(true);
-				FileOutputStream output(nodeRestorePath);
+				case NodeType::Link:
+				{
+					Path realNodePath;
+					const Snapshot* snapshot = this->FindDataSnapshot(i, realNodePath);
+					Path target = snapshot->fileSystem->GetNode(realNodePath).Cast<const Link>()->ReadTarget();
 
-				//write
-				uint64 flushedSize = input->FlushTo(output);
-				ASSERT_EQUALS(flushedSize, attributes.Size());
+					OSFileSystem::GetInstance().CreateLink(nodeRestorePath, target);
 
-				process.AddFinishedSize(flushedSize);
+					process.AddFinishedSize(attributes.Size());
+				}
+				break;
 			}
-			break;
-			case NodeType::Link:
-			{
-				Path realNodePath;
-				const Snapshot* snapshot = this->FindDataSnapshot(i, realNodePath);
-				Path target = snapshot->fileSystem->GetNode(realNodePath).Cast<const Link>()->ReadTarget();
 
-				OSFileSystem::GetInstance().CreateLink(nodeRestorePath, target);
-
-				process.AddFinishedSize(attributes.Size());
-			}
-			break;
-		}
-
-		//open files
-		process.IncFinishedCount();
-		//});
+			//open files
+			process.IncFinishedCount();
+		});
 	}
 	threadPool.WaitForAllTasksToComplete();
 	process.Finished();
@@ -328,7 +331,8 @@ UniquePointer<Snapshot> Snapshot::Deserialize(const Path &path)
 		hashFunction->Finish();
 		String got = hashFunction->GetDigestString().ToLowercase();
 
-		ASSERT(protection.hashValue == got, u8"DO THIS CORRECTLY");
+		if(protection.hashValue != got)
+			throw StreamPipingFailedException(path);
 
 		return snapshot;
 	}
