@@ -22,7 +22,7 @@
 #include "FlatVolumesFileSystem.hpp"
 
 //Constructor
-VolumesOutputStream::VolumesOutputStream(FlatVolumesFileSystem &fileSystem, const StdXX::Path& path) : fileSystem(fileSystem), path(path)
+VolumesOutputStream::VolumesOutputStream(FlatVolumesFileSystem &fileSystem, const class Path& path) : fileSystem(fileSystem), path(path)
 {
 }
 

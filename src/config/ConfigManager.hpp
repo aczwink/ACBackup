@@ -17,11 +17,12 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#include <Std++.hpp>
+#include <StdXX.hpp>
 using namespace StdXX;
 //Local
 #include "Config.hpp"
 #include "../status/StatusTracker.hpp"
+#include "../CompressionSetting.hpp"
 
 class ConfigManager
 {
@@ -32,6 +33,15 @@ public:
 
 	//Methods
 	void Write(const Path& dirPath);
+
+	//Functions
+	static void GetCompressionSettings(enum CompressionSetting compressionSetting, CompressionSettings& settings);
+
+	//Properties
+	enum CompressionSetting CompressionSetting() const
+	{
+		return CompressionSetting::lzma;
+	}
 
 	//Inline
 	inline const struct Config& Config() const

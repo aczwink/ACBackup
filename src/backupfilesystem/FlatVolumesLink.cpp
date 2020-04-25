@@ -22,12 +22,12 @@
 #include "FlatVolumesFile.hpp"
 
 //Public methods
-void FlatVolumesLink::ChangePermissions(const Filesystem::NodePermissions &newPermissions)
+void FlatVolumesLink::ChangePermissions(const NodePermissions &newPermissions)
 {
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
 }
 
-FileSystemNodeInfo FlatVolumesLink::QueryInfo() const
+NodeInfo FlatVolumesLink::QueryInfo() const
 {
 	return this->index.GetFileSystemNodeInfo(this->nodeIndex);
 }

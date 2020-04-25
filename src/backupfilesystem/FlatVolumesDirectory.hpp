@@ -16,11 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <Std++.hpp>
+#include <StdXX.hpp>
 //Local
 #include "../backup/BackupNodeIndex.hpp"
 
-class FlatVolumesDirectory : public StdXX::Directory
+class FlatVolumesDirectory : public Directory
 {
 public:
 	//Constructor
@@ -32,20 +32,16 @@ public:
 	//Methods
 	DirectoryIterator begin() const override;
 	DirectoryIterator end() const override;
-	StdXX::FileSystemNodeInfo QueryInfo() const override;
+	NodeInfo QueryInfo() const override;
 
 	//NOT IMPLEMENTED
 	StdXX::UniquePointer<StdXX::OutputStream> CreateFile(const StdXX::String &name) override;
 	void CreateSubDirectory(const StdXX::String &name) override;
-	bool Exists(const StdXX::Path &path) const override;
-	StdXX::AutoPointer<FileSystemNode> GetChild(const StdXX::String &name) override;
-	StdXX::AutoPointer<const FileSystemNode> GetChild(const StdXX::String &name) const override;
-	StdXX::FileSystem *GetFileSystem() override;
-	const StdXX::FileSystem *GetFileSystem() const override;
-	StdXX::AutoPointer<const Directory> GetParent() const override;
-	StdXX::Path GetPath() const override;
+	bool Exists(const Path &path) const override;
+	StdXX::AutoPointer<Node> GetChild(const StdXX::String &name) override;
+	StdXX::AutoPointer<const Node> GetChild(const StdXX::String &name) const override;
 	bool IsEmpty() const override;
-	void ChangePermissions(const StdXX::Filesystem::NodePermissions &newPermissions) override;
+	void ChangePermissions(const NodePermissions &newPermissions) override;
 	//END OF NOT IMPLEMENTED
 
 private:

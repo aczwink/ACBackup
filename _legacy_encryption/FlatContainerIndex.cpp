@@ -33,7 +33,7 @@ FlatContainerIndex::FlatContainerIndex(const Path &prefixPath, const Optional<En
 }
 
 //Public methods
-float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileSystemNodeIndex& index, float32 compressionRate, const int8 maxCompressionLevel, const uint64 memLimit)
+float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileSystemNodeIndex& index, const uint64 memLimit)
 {
 	/*
 	//generate counter value
@@ -82,19 +82,6 @@ float32 FlatContainerIndex::BackupFile(const Path& filePath, const FileSystemNod
 										   static_cast<uint16>(this->encryptionKey.GetNumberOfElements()), *counter, *sink);
 			sink = cipher.operator->();
 		}
-
-		UniquePointer<Compressor> compressor;
-		if(backupEntry.isCompressed)
-		{
-			compressor = Compressor::Create(CompressionAlgorithm::LZMA, *sink, compressionLevel);
-			sink = compressor.operator->();
-		}
-
-		UniquePointer<InputStream> fileInputStream = index.OpenFileForReading(filePath);
-		fileInputStream->FlushTo(*sink);
-		sink->Flush();
-		if(backupEntry.isCompressed)
-			compressor->Finalize();
 
 		backupEntry.blockSize = this->writing.dataFile->GetCurrentOffset() - backupEntry.offset;
 	}

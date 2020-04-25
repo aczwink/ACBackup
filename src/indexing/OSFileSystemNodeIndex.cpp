@@ -34,14 +34,14 @@ OSFileSystemNodeIndex::OSFileSystemNodeIndex(const Path &path) : basePath(path)
 String OSFileSystemNodeIndex::ComputeNodeHash(uint32 nodeIndex) const
 {
 	const FileSystemNodeAttributes& attributes = this->GetNodeAttributes(nodeIndex);
-	ASSERT(attributes.Type() != FileSystemNodeType::Directory, u8"Can't hash directory");
+	ASSERT(attributes.Type() != NodeType::Directory, u8"Can't hash directory");
 
 	const Path &nodePath = this->GetNodePath(nodeIndex);
 
 	UniquePointer<InputStream> inputStream;
-	if(attributes.Type() == FileSystemNodeType::File)
+	if(attributes.Type() == NodeType::File)
 		inputStream = this->OpenFile(nodePath);
-	else if(attributes.Type() == FileSystemNodeType::Link)
+	else if(attributes.Type() == NodeType::Link)
 		inputStream = this->OpenLinkTargetAsStream(nodePath);
 
 	InjectionContainer &injectionContainer = InjectionContainer::Instance();
@@ -61,7 +61,7 @@ UniquePointer<InputStream> OSFileSystemNodeIndex::OpenLinkTargetAsStream(const P
 {
 	AutoPointer<const Link> link = OSFileSystem::GetInstance().GetNode(this->MapNodePathToFileSystemPath(nodePath)).MoveCast<const Link>();
 	Path linkTarget = link->ReadTarget();
-	return new StringInputStream(linkTarget.GetString(), true);
+	return new StringInputStream(linkTarget.String(), true);
 }
 
 UniquePointer<InputStream> OSFileSystemNodeIndex::OpenFile(const Path &filePath) const
@@ -87,18 +87,18 @@ void OSFileSystemNodeIndex::IndexDirectoryChildren(AutoPointer<const Directory> 
 	}
 }
 
-void OSFileSystemNodeIndex::IndexNode(AutoPointer<const FileSystemNode> node, const Path& nodePath, ProcessStatus& findStatus)
+void OSFileSystemNodeIndex::IndexNode(AutoPointer<const Node> node, const Path& nodePath, ProcessStatus& findStatus)
 {
 	UniquePointer<FileSystemNodeAttributes> attributes;
 	switch(node->GetType())
 	{
-		case FileSystemNodeType::Directory:
+		case NodeType::Directory:
 			attributes = new FileSystemNodeAttributes(node.Cast<const Directory>());
 			break;
-		case FileSystemNodeType::File:
+		case NodeType::File:
 			attributes = new FileSystemNodeAttributes(node.Cast<const File>());;
 			break;
-		case FileSystemNodeType::Link:
+		case NodeType::Link:
 		{
 			AutoPointer<const Link> link = node.Cast<const Link>();
 			Path target = link->ReadTarget();
@@ -124,6 +124,6 @@ void OSFileSystemNodeIndex::IndexNode(AutoPointer<const FileSystemNode> node, co
 	this->AddNode(nodePath, Move(attributes));
 	findStatus.IncFileCount();
 
-	if(node->GetType() == FileSystemNodeType::Directory)
+	if(node->GetType() == NodeType::Directory)
 		this->IndexDirectoryChildren(node.Cast<const Directory>(), nodePath, findStatus);
 }

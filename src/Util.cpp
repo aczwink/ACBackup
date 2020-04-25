@@ -23,12 +23,12 @@ void UnprotectFile(const Path& filePath)
 {
 	return; //TODO: reintegrate this, also test if a snapshot can be created if the dir is locked (i.e. if unlocking and so on works)
 
-	AutoPointer<FileSystemNode> node = OSFileSystem::GetInstance().GetNode(filePath);
-	FileSystemNodeInfo nodeInfo = node->QueryInfo();
+	AutoPointer<Node> node = OSFileSystem::GetInstance().GetNode(filePath);
+	NodeInfo nodeInfo = node->QueryInfo();
 
-	if(nodeInfo.permissions.IsInstanceOf<Filesystem::UnixPermissions>())
+	if(nodeInfo.permissions.IsInstanceOf<UnixPermissions>())
 	{
-		Filesystem::UnixPermissions& permissions = dynamic_cast<Filesystem::UnixPermissions &>(*nodeInfo.permissions);
+		UnixPermissions& permissions = dynamic_cast<UnixPermissions &>(*nodeInfo.permissions);
 
 		permissions.owner.write = true;
 
@@ -44,12 +44,12 @@ void WriteProtectFile(const Path& filePath)
 {
 	return; //TODO: reintegrate this, also test if a snapshot can be created if the dir is locked (i.e. if unlocking and so on works)
 
-	AutoPointer<FileSystemNode> node = OSFileSystem::GetInstance().GetNode(filePath);
-	FileSystemNodeInfo nodeInfo = node->QueryInfo();
+	AutoPointer<Node> node = OSFileSystem::GetInstance().GetNode(filePath);
+	NodeInfo nodeInfo = node->QueryInfo();
 
-	if(nodeInfo.permissions.IsInstanceOf<Filesystem::UnixPermissions>())
+	if(nodeInfo.permissions.IsInstanceOf<UnixPermissions>())
 	{
-		Filesystem::UnixPermissions& permissions = dynamic_cast<Filesystem::UnixPermissions &>(*nodeInfo.permissions);
+		UnixPermissions& permissions = dynamic_cast<UnixPermissions &>(*nodeInfo.permissions);
 
 		permissions.others.write = false;
 		permissions.group.write = false;

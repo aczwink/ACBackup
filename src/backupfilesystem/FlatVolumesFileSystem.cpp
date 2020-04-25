@@ -29,7 +29,7 @@
 
 //Constructor
 FlatVolumesFileSystem::FlatVolumesFileSystem(const Path &dirPath, BackupNodeIndex& index)
-		: FileSystem(nullptr), dirPath(dirPath), index(index)
+		: dirPath(dirPath), index(index)
 {
 	this->writing.createdDataDir = false;
 	this->writing.nextVolumeNumber = 0;
@@ -65,6 +65,11 @@ UniquePointer<OutputStream> FlatVolumesFileSystem::CreateFile(const Path &filePa
 	return new VolumesOutputStream(*this, filePath);
 }
 
+void FlatVolumesFileSystem::CreateLink(const Path &linkPath, const Path &linkTargetPath)
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+}
+
 bool FlatVolumesFileSystem::Exists(const Path &path) const
 {
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
@@ -76,13 +81,13 @@ void FlatVolumesFileSystem::Flush()
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
 }
 
-AutoPointer<FileSystemNode> FlatVolumesFileSystem::GetNode(const Path &path)
+AutoPointer<Node> FlatVolumesFileSystem::GetNode(const Path &path)
 {
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return AutoPointer<FileSystemNode>();
+	return AutoPointer<Node>();
 }
 
-AutoPointer<const FileSystemNode> FlatVolumesFileSystem::GetNode(const Path &path) const
+AutoPointer<const Node> FlatVolumesFileSystem::GetNode(const Path &path) const
 {
 	if(this->index.HasNodeIndex(path))
 	{
@@ -91,34 +96,16 @@ AutoPointer<const FileSystemNode> FlatVolumesFileSystem::GetNode(const Path &pat
 
 		switch (attributes.Type())
 		{
-			case FileSystemNodeType::Directory:
+			case NodeType::Directory:
 				return new FlatVolumesDirectory(index, this->index);
-			case FileSystemNodeType::File:
+			case NodeType::File:
 				return new FlatVolumesFile(index, this->index, const_cast<FlatVolumesFileSystem &>(*this));
-			case FileSystemNodeType::Link:
+			case NodeType::Link:
 				return new FlatVolumesLink(index, this->index, *this);
 		}
 	}
 
 	return nullptr;
-}
-
-AutoPointer<Directory> FlatVolumesFileSystem::GetRoot()
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return AutoPointer<Directory>();
-}
-
-AutoPointer<const Directory> FlatVolumesFileSystem::GetRoot() const
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return AutoPointer<const Directory>();
-}
-
-uint64 FlatVolumesFileSystem::GetSize() const
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return 0;
 }
 
 void FlatVolumesFileSystem::Move(const Path &from, const Path &to)
@@ -140,7 +127,7 @@ uint32 FlatVolumesFileSystem::ReadBytes(const FlatVolumesBlockInputStream &reade
 	while(count)
 	{
 		SeekableInputStream& inputStream = this->LockVolumeStream(volumeNumber);
-		inputStream.SetCurrentOffset(offset);
+		inputStream.SeekTo(offset);
 		uint32 nBytesRead = inputStream.ReadBytes(dest, count);
 		this->UnlockVolumeStream(volumeNumber);
 
@@ -173,6 +160,8 @@ void FlatVolumesFileSystem::WriteProtect()
 {
 	this->writing.openVolumes.Release(); //close open files
 
+	if(!OSFileSystem::GetInstance().Exists(this->dirPath))
+		return;
 	auto dir = OSFileSystem::GetInstance().GetDirectory(this->dirPath);
 	auto dirWalker = dir->WalkFiles();
 
@@ -181,6 +170,12 @@ void FlatVolumesFileSystem::WriteProtect()
 		WriteProtectFile(this->dirPath / relPath);
 	}
 	WriteProtectFile(this->dirPath);
+}
+
+SpaceInfo FlatVolumesFileSystem::QuerySpace() const
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	return SpaceInfo();
 }
 
 //Private methods

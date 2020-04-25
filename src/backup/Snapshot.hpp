@@ -17,7 +17,7 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#include <Std++.hpp>
+#include <StdXX.hpp>
 using namespace StdXX;
 //Local
 #include "BackupNodeIndex.hpp"
@@ -59,17 +59,19 @@ public:
 	}
 
 	//Methods
+	void BackupMove(uint32 nodeIndex, const OSFileSystemNodeIndex &sourceIndex, const BackupNodeAttributes& oldAttributes, const Path& oldPath);
 	void BackupNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex, ProcessStatus& processStatus);
-	void BackupNodeMetadata(uint32 index, const BackupNodeAttributes& oldAttributes, const OSFileSystemNodeIndex &sourceIndex, ProcessStatus& processStatus);
+	void BackupNodeMetadata(uint32 index, const BackupNodeAttributes& oldAttributes, const OSFileSystemNodeIndex &sourceIndex);
 	/**
 	 * Finds the newest snapshot that has the payload data of the node identified by index of this snapshot.
 	 * @param nodeIndex
 	 * @return
 	 */
-	const Snapshot* FindDataSnapshot(uint32 nodeIndex) const;
+	const Snapshot* FindDataSnapshot(uint32 nodeIndex, Path& nodePathInSnapshot) const;
 	void Mount(const Path& mountPoint) const;
-	bool VerifyNode(const Path& path) const;
+	void Restore(const Path& restorePoint) const;
 	void Serialize() const;
+	bool VerifyNode(const Path& path) const;
 
 	//Functions
 	static UniquePointer<Snapshot> Deserialize(const Path& path);

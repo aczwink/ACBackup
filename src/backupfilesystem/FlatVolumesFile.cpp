@@ -24,19 +24,23 @@
 #include "../config/ConfigManager.hpp"
 
 //Public methods
-uint64 FlatVolumesFile::GetSize() const
-{
-	return this->attributes.Size();
-}
-
 UniquePointer<InputStream> FlatVolumesFile::OpenForReading(bool verify) const
 {
 	UniquePointer<InputStream> blockInputStream = new FlatVolumesBlockInputStream(this->fileSystem, this->attributes.Blocks());
 	ChainedInputStream* chain = new ChainedInputStream(Move(blockInputStream));
 	chain->Add( new BufferedInputStream(chain->GetEnd()) );
+
+	if(this->attributes.CompressionSetting().HasValue())
+	{
+		CompressionSettings compressionSettings;
+		ConfigManager::GetCompressionSettings(*this->attributes.CompressionSetting(), compressionSettings);
+		chain->Add(Decompressor::Create(compressionSettings.compressionStreamFormatType, chain->GetEnd(), verify));
+	}
+
 	if(verify)
 	{
-		Crypto::HashAlgorithm hashAlgorithm = InjectionContainer::Instance().Get<ConfigManager>().Config().hashAlgorithm;
+		const Config &config = InjectionContainer::Instance().Get<ConfigManager>().Config();
+		Crypto::HashAlgorithm hashAlgorithm = config.hashAlgorithm;
 		String expected = this->attributes.Hash(hashAlgorithm);
 		chain->Add(new Crypto::CheckedHashingInputStream(chain->GetEnd(), hashAlgorithm, expected));
 	}
@@ -50,12 +54,12 @@ UniquePointer<OutputStream> FlatVolumesFile::OpenForWriting()
 	return UniquePointer<OutputStream>();
 }
 
-void FlatVolumesFile::ChangePermissions(const Filesystem::NodePermissions &newPermissions)
+void FlatVolumesFile::ChangePermissions(const NodePermissions &newPermissions)
 {
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
 }
 
-FileSystemNodeInfo FlatVolumesFile::QueryInfo() const
+NodeInfo FlatVolumesFile::QueryInfo() const
 {
 	return this->index.GetFileSystemNodeInfo(this->fileIndex);
 }

@@ -16,13 +16,19 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <Std++.hpp>
+#include <StdXX.hpp>
 using namespace StdXX;
+using namespace StdXX::FileSystem;
+//Local
+#include "../backup/SnapshotManager.hpp"
 
 //Prototypes
-int32 CommandAddSnapshot();
+int32 CommandAddSnapshot(SnapshotManager& snapshotManager);
+int32 CommandDiffSnapshots(SnapshotManager& snapshotManager, const String& snapshotName, const String& otherSnapshotName);
+int32 CommandDiffSnapshotWithSourceDirectory(SnapshotManager& snapshotManager, const String& snapshotName);
 int32 CommandInit(const Path& sourcePath);
-int32 CommandMountSnapshot(const String& snapshotName, const Path& mountPoint);
+int32 CommandOutputSnapshotHashValues(const Snapshot& snapshot);
+int32 CommandOutputSnapshotHashValues(const Snapshot& snapshot, const String& hashAlgorithm);
+int32 CommandOutputSnapshotStats(const Snapshot& snapshot);
 int32 CommandVerifyAllSnapshots();
-int32 CommandVerifyNewestSnapshot();
-int32 CommandVerifySnapshot(const String& snapshotName, bool full);
+int32 CommandVerifySnapshot(SnapshotManager& snapshotManager, const Snapshot& snapshot, bool full);

@@ -18,6 +18,8 @@
  */
 //Class header
 #include "CompressionStatistics.hpp"
+#include "../InjectionContainer.hpp"
+#include "ConfigManager.hpp"
 
 //Constructor
 CompressionStatistics::CompressionStatistics(const Path &path)
@@ -48,6 +50,37 @@ CompressionStatistics::CompressionStatistics(const Path &path)
 }
 
 //Public methods
+void CompressionStatistics::AddCompressionRateSample(const String &fileExtension, float32 compressionRate)
+{
+	AutoLock lock(this->compressionStatsLock);
+
+	compressionRate = Math::Clamp(compressionRate, 0.0f, 1.0f);
+
+	String extLower = fileExtension.ToLowercase();
+	this->compressionStats[extLower] = (this->compressionStats[extLower] + compressionRate) / 2.0f;
+}
+
+uint8 CompressionStatistics::GetCompressionLevel(float32 compressionRate) const
+{
+	const Config& config = InjectionContainer::Instance().Get<ConfigManager>().Config();
+
+	float32 c = (config.maxCompressionLevel+1) * (1 - compressionRate);
+	float32 compressionLevel = roundf(c) - 1;
+
+	return (uint8)Math::Clamp(compressionLevel, 0.0f, 9.0f);
+}
+
+float32 CompressionStatistics::GetCompressionRate(const String &fileExtension)
+{
+	AutoLock lock(this->compressionStatsLock);
+
+	String extLower = fileExtension.ToLowercase();
+	if(!this->compressionStats.Contains(extLower))
+		this->compressionStats[extLower] = 0; //assume at first that file is perfectly compressible
+
+	return this->compressionStats[extLower];
+}
+
 void CompressionStatistics::Write(const Path &dirPath)
 {
     FileOutputStream fileOutputStream(dirPath / this->c_comprStatsFileName, true);

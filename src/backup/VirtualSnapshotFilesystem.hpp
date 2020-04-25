@@ -16,29 +16,23 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <Std++.hpp>
+#include <StdXX.hpp>
 using namespace StdXX;
 //Local
 #include "Snapshot.hpp"
 
-class VirtualSnapshotFilesystem : public FileSystem
+class VirtualSnapshotFilesystem : public ReadableFileSystem
 {
 public:
 	//Constructor
-	inline VirtualSnapshotFilesystem(const Snapshot& snapshot) : FileSystem(nullptr), snapshot(snapshot)
+	inline VirtualSnapshotFilesystem(const Snapshot& snapshot) : snapshot(snapshot)
 	{
 	}
 
 	//Methods
-	UniquePointer<OutputStream> CreateFile(const Path &filePath) override;
 	bool Exists(const Path &path) const override;
-	void Flush() override;
-	AutoPointer<FileSystemNode> GetNode(const Path &path) override;
-	AutoPointer<const FileSystemNode> GetNode(const Path &path) const override;
-	AutoPointer<Directory> GetRoot() override;
-	AutoPointer<const Directory> GetRoot() const override;
-	uint64 GetSize() const override;
-	void Move(const Path &from, const Path &to) override;
+	AutoPointer<const Node> GetNode(const Path &path) const override;
+	SpaceInfo QuerySpace() const override;
 
 private:
 	//Members

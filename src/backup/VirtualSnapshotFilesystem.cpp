@@ -20,30 +20,13 @@
 #include "VirtualSnapshotFilesystem.hpp"
 
 //Public methods
-UniquePointer<OutputStream> VirtualSnapshotFilesystem::CreateFile(const Path &filePath)
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return UniquePointer<OutputStream>();
-}
-
 bool VirtualSnapshotFilesystem::Exists(const Path &path) const
 {
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
 	return false;
 }
 
-void VirtualSnapshotFilesystem::Flush()
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-}
-
-AutoPointer<FileSystemNode> VirtualSnapshotFilesystem::GetNode(const Path &path)
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return AutoPointer<FileSystemNode>();
-}
-
-AutoPointer<const FileSystemNode> VirtualSnapshotFilesystem::GetNode(const Path &path) const
+AutoPointer<const Node> VirtualSnapshotFilesystem::GetNode(const Path &path) const
 {
 	if(!this->snapshot.Index().HasNodeIndex(path))
 		return nullptr;
@@ -51,33 +34,17 @@ AutoPointer<const FileSystemNode> VirtualSnapshotFilesystem::GetNode(const Path 
 
 	const BackupNodeAttributes& attributes = this->snapshot.Index().GetNodeAttributes(nodeIndex);
 	const Snapshot* dataSnapshot;
-	if(attributes.Type() == FileSystemNodeType::Directory)
+	Path realNodePath = path;
+	if(attributes.Type() == NodeType::Directory)
 		dataSnapshot = &this->snapshot;
 	else
-		dataSnapshot = this->snapshot.FindDataSnapshot(nodeIndex);
+		dataSnapshot = this->snapshot.FindDataSnapshot(nodeIndex, realNodePath);
 
-	return dataSnapshot->Filesystem().GetNode(path);
+	return dataSnapshot->Filesystem().GetNode(realNodePath);
 }
 
-AutoPointer<Directory> VirtualSnapshotFilesystem::GetRoot()
+SpaceInfo VirtualSnapshotFilesystem::QuerySpace() const
 {
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return AutoPointer<Directory>();
-}
-
-AutoPointer<const Directory> VirtualSnapshotFilesystem::GetRoot() const
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return AutoPointer<const Directory>();
-}
-
-uint64 VirtualSnapshotFilesystem::GetSize() const
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return 0;
-}
-
-void VirtualSnapshotFilesystem::Move(const Path &from, const Path &to)
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	return SpaceInfo();
 }

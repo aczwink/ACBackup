@@ -46,17 +46,9 @@ const char* c_volumeSize = u8"volumeSize";
 
 namespace StdXX::Serialization
 {
-	enum class CompressionSetting
-	{
-		lzma
-	};
-
 	void Archive(JSONDeserializer& ar, Config& config)
 	{
 		CompressionSetting compressionSetting = CompressionSetting::lzma;
-		StaticArray<Tuple<CompressionSetting, String>, 1> settingMapping = { {
-			{ CompressionSetting::lzma, u8"lzma"}
-		} };
 		StaticArray<Tuple<StatusTrackerType, String>, 2> statusTrackerMapping = { {
 				{ StatusTrackerType::Terminal, u8"terminal"},
 				{ StatusTrackerType::Web, c_statusTracker_web},
@@ -65,21 +57,15 @@ namespace StdXX::Serialization
 		ar & Binding(c_sourcePath, config.sourcePath)
 			& Binding(c_blockSize, config.blockSize)
 			& Binding(c_volumeSize, config.volumeSize)
-			& Binding(c_compression, StringMapping(compressionSetting, settingMapping))
-			& Binding(c_maxCompressionLevel, config.maxCompressionLevel)
 		;
+		CustomArchive(ar, c_compression, compressionSetting);
+		ar & Binding(c_maxCompressionLevel, config.maxCompressionLevel);
 		CustomArchive(ar, c_hashAlgorithm, config.hashAlgorithm);
 		ar & Binding(c_statusTracker, StringMapping(config.statusTrackerType, statusTrackerMapping))
 			& Binding(c_statusTracker_port, config.statusTrackerPort)
 		;
 
-		switch(compressionSetting)
-		{
-			case CompressionSetting::lzma:
-				config.compressionAlgorithm = CompressionAlgorithm::LZMA;
-				config.compressionStreamFormatType = CompressionStreamFormatType::lzma;
-				break;
-		}
+		ConfigManager::GetCompressionSettings(compressionSetting, config);
 
 		if(!Math::IsValueInInterval(config.maxCompressionLevel, 0_u8, 9_u8))
 			throw ConfigException(u8"Invalid value for field '" + String(c_maxCompressionLevel) + u8"'");
@@ -118,7 +104,7 @@ void ConfigManager::Write(const Path &dirPath)
 	TextWriter textWriter(bufferedOutputStream, TextCodecType::UTF8);
 
 	textWriter << u8"{" << endl;
-	this->WriteConfigStringValue(textWriter, 1, c_sourcePath, this->config.sourcePath.GetString(), u8"The path to the directory that should be backed up");
+	this->WriteConfigStringValue(textWriter, 1, c_sourcePath, this->config.sourcePath.String(), u8"The path to the directory that should be backed up");
 	this->WriteConfigValue(textWriter, 1, c_blockSize, 1024, u8"The maximum size of a block in KiB");
 	this->WriteConfigValue(textWriter, 1, c_volumeSize, 100, u8"The maximum size of a volume in MiB");
 	this->WriteConfigStringValue(textWriter, 1, c_compression, c_compression_lzma, u8"The used compression method");
@@ -129,4 +115,16 @@ void ConfigManager::Write(const Path &dirPath)
 	textWriter << u8"}" << endl;
 
 	bufferedOutputStream.Flush();
+}
+
+//Class functions
+void ConfigManager::GetCompressionSettings(enum CompressionSetting compressionSetting, CompressionSettings& settings)
+{
+	switch(compressionSetting)
+	{
+		case CompressionSetting::lzma:
+			settings.compressionAlgorithm = CompressionAlgorithm::LZMA;
+			settings.compressionStreamFormatType = CompressionStreamFormatType::lzma;
+			break;
+	}
 }

@@ -18,14 +18,19 @@
  */
 #pragma once
 #include "../status/StatusTracker.hpp"
+using namespace StdXX::FileSystem;
 
-struct Config
+struct CompressionSettings
+{
+	CompressionStreamFormatType compressionStreamFormatType;
+	CompressionAlgorithm compressionAlgorithm;
+};
+
+struct Config : CompressionSettings
 {
 	Path sourcePath;
 	uint32 blockSize;
 	uint64 volumeSize;
-	CompressionStreamFormatType compressionStreamFormatType;
-	CompressionAlgorithm compressionAlgorithm;
 	uint8 maxCompressionLevel;
 	Crypto::HashAlgorithm hashAlgorithm;
 	StatusTrackerType statusTrackerType;

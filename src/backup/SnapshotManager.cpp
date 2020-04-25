@@ -21,6 +21,7 @@
 //Local
 #include "../status/ProcessStatus.hpp"
 #include "../config/CompressionStatistics.hpp"
+#include "../NodeIndexDifferenceResolver.hpp"
 
 //Constructor
 SnapshotManager::SnapshotManager()
@@ -33,42 +34,42 @@ void SnapshotManager::AddSnapshot(const OSFileSystemNodeIndex& sourceIndex)
 {
 	InjectionContainer& ic = InjectionContainer::Instance();
 
-	const Map<uint32, NodeDifference> diffNodeIndices = this->ComputeDifference(sourceIndex, true);
+	//we simply include all nodes whether they have changed or not and skip diff.deleted
+	const NodeIndexDifferences diff = this->ComputeDifference(sourceIndex, true);
 
 	UnprotectFile(ic.Get<ConfigManager>().Config().dataPath);
 	UniquePointer<Snapshot> snapshot = new Snapshot();
 
-	const uint64 totalSize = sourceIndex.ComputeTotalSize(diffNodeIndices);
+	const uint64 totalSize = sourceIndex.ComputeTotalSize(diff.differentData);
 	ProcessStatus& process = ic.Get<StatusTracker>().AddProcessStatusTracker(u8"Creating snapshot: " + snapshot->Name(), sourceIndex.GetNumberOfNodes(), totalSize);
 
 	StaticThreadPool& threadPool = InjectionContainer::Instance().Get<StaticThreadPool>();
-	for(const auto& kv : diffNodeIndices)
+	for(uint32 index : diff.differentData)
 	{
 		//TODO: reenable this
 		//threadPool.EnqueueTask([&snapshot, i, &index, &process]()
 		//{
-		switch(kv.value.type)
-		{
-			case NodeDifferenceType::BackupFully:
-				snapshot->BackupNode(kv.key, sourceIndex, process);
-				break;
-			case NodeDifferenceType::BackreferenceWithDifferentPath:
-				NOT_IMPLEMENTED_ERROR; //TODO: implement me
-				break;
-			case NodeDifferenceType::Delete:
-				NOT_IMPLEMENTED_ERROR; //TODO: implement me
-				break;
-			case NodeDifferenceType::UpdateMetadataOnly:
-			{
-				const BackupNodeIndex& lastIndex = *this->LastIndex();
-				const BackupNodeAttributes &oldAttributes = lastIndex.GetNodeAttributes(lastIndex.GetNodeIndex(sourceIndex.GetNodePath(kv.key)));
-				snapshot->BackupNodeMetadata(kv.key, oldAttributes, sourceIndex, process);
-			}
-			break;
-		}
+		snapshot->BackupNode(index, sourceIndex, process);
 		process.IncFinishedCount();
 		//});
 	}
+
+	for(uint32 index : diff.differentMetadata)
+	{
+		const BackupNodeIndex& lastIndex = *this->LastIndex();
+		const BackupNodeAttributes &oldAttributes = lastIndex.GetNodeAttributes(lastIndex.GetNodeIndex(sourceIndex.GetNodePath(index)));
+		snapshot->BackupNodeMetadata(index, oldAttributes, sourceIndex);
+		process.IncFinishedCount();
+	}
+
+	for(const auto& kv : diff.moved)
+	{
+		const BackupNodeIndex& lastIndex = *this->LastIndex();
+		const BackupNodeAttributes &oldAttributes = lastIndex.GetNodeAttributes(kv.value);
+		snapshot->BackupMove(kv.key, sourceIndex, oldAttributes, lastIndex.GetNodePath(kv.value));
+		process.IncFinishedCount();
+	}
+
 	threadPool.WaitForAllTasksToComplete();
 	process.Finished();
 
@@ -111,13 +112,13 @@ DynamicArray<uint32> SnapshotManager::VerifySnapshot(const Snapshot &snapshot, b
 		//threadPool.EnqueueTask([&snapshot, i, &index, &process]()
 		//{
 		const BackupNodeAttributes &nodeAttributes = snapshot.Index().GetNodeAttributes(i);
-		if(nodeAttributes.Type() == FileSystemNodeType::Directory)
+		if(nodeAttributes.Type() == NodeType::Directory)
 			continue;
-		const Snapshot* dataSnapshot = snapshot.FindDataSnapshot(i);
+		Path realNodePath;
+		const Snapshot* dataSnapshot = snapshot.FindDataSnapshot(i, realNodePath);
 		if(full || (dataSnapshot == &snapshot))
 		{
-			const Path& nodePath = snapshot.Index().GetNodePath(i);
-			if (!dataSnapshot->VerifyNode(nodePath))
+			if (!dataSnapshot->VerifyNode(realNodePath))
 			{
 				failedFilesLock.Lock();
 				failedNodes.Push(i);
@@ -136,22 +137,30 @@ DynamicArray<uint32> SnapshotManager::VerifySnapshot(const Snapshot &snapshot, b
 }
 
 //Private methods
-inline Map<uint32, NodeDifference> SnapshotManager::ComputeDifference(const OSFileSystemNodeIndex& sourceIndex, bool updateDefault) const
+NodeIndexDifferences SnapshotManager::ComputeDifference(const OSFileSystemNodeIndex& sourceIndex, bool updateDefault) const
 {
 	if(this->LastIndex())
 	{
-		const BackupNodeIndex& newestSnapshotIndex = *this->LastIndex();
+		NodeIndexDifferenceResolver resolver;
+		NodeIndexDifferences difference = resolver.ComputeDiff(*this->LastIndex(), sourceIndex);
 
-		BinaryTreeSet<uint32> leftToRightDiffs = newestSnapshotIndex.ComputeDifference(sourceIndex);
-		BinaryTreeSet<uint32> rightToLeftDiffs = sourceIndex.ComputeDifference(newestSnapshotIndex);
-		return this->ResolveDifferences(newestSnapshotIndex, sourceIndex, leftToRightDiffs, rightToLeftDiffs, updateDefault);
+		if(updateDefault)
+		{
+			//assume all haven't changed and update only metadata for these
+			for(uint32 i = 0; i < sourceIndex.GetNumberOfNodes(); i++)
+			{
+				if(!( difference.differentData.Contains(i) || difference.differentMetadata.Contains(i) || difference.moved.Contains(i) ))
+					difference.differentMetadata.Insert(i);
+			}
+		}
+		return difference;
 	}
 
 	//all nodes of sourceIndex need to be backed up
-	Map<uint32, NodeDifference> result;
+	NodeIndexDifferences difference{};
 	for(uint32 i = 0; i < sourceIndex.GetNumberOfNodes(); i++)
-		result.Insert(i, {NodeDifferenceType::BackupFully});
-	return result;
+		difference.differentData.Insert(i);
+	return difference;
 }
 
 DynamicArray<Path> SnapshotManager::ListPathsInIndexDirectory()
@@ -188,93 +197,9 @@ void SnapshotManager::ReadInSnapshots()
 	}
 }
 
-Map<uint32, NodeDifference> SnapshotManager::ResolveDifferences(const BackupNodeIndex &leftIndex, const OSFileSystemNodeIndex &rightIndex, const BinaryTreeSet<uint32> &leftToRightDiffs, const BinaryTreeSet<uint32> &rightToLeftDiffs, bool updateDefault) const
-{
-	InjectionContainer &injectionContainer = InjectionContainer::Instance();
-	StatusTracker& statusTracker = injectionContainer.Get<StatusTracker>();
-	StaticThreadPool& threadPool = injectionContainer.Get<StaticThreadPool>();
-
-	const Config &config = injectionContainer.Get<ConfigManager>().Config();
-
-	Map<uint32, NodeDifference> nodeDifferences;
-	Mutex nodeDifferencesLock;
-
-	if(updateDefault)
-	{
-		//assume all haven't changed and update only metadata for these
-		for(uint32 i = 0; i < rightIndex.GetNumberOfNodes(); i++)
-			nodeDifferences.Insert(i, {NodeDifferenceType::UpdateMetadataOnly});
-	}
-
-	//find deleted
-	ProcessStatus& process = statusTracker.AddProcessStatusTracker(u8"Resolving deleted nodes", leftToRightDiffs.GetNumberOfElements(), leftIndex.ComputeTotalSize(leftToRightDiffs));
-	for(uint32 index : leftToRightDiffs)
-	{
-		const Path &path = leftIndex.GetNodePath(index);
-		if(rightIndex.HasNodeIndex(path))
-		{
-			process.IncFileCount();
-			process.ReduceTotalSize(rightIndex.GetNodeAttributes(index).Size());
-			continue;
-		}
-
-		nodeDifferences.Insert(rightIndex.GetNodeIndex(path), {NodeDifferenceType::Delete});
-
-		process.IncFileCount();
-		process.AddFinishedSize(leftIndex.GetNodeAttributes(index).Size());
-	}
-	threadPool.WaitForAllTasksToComplete();
-	process.Finished();
-
-	//index new
-	ProcessStatus& process2 = statusTracker.AddProcessStatusTracker(u8"Indexing potentially new nodes", rightToLeftDiffs.GetNumberOfElements(), rightIndex.ComputeTotalSize(rightToLeftDiffs));
-	for(uint32 index : rightToLeftDiffs)
-	{
-		//threadPool.EnqueueTask([]() //TODO: implement me
-		//{
-		const FileSystemNodeAttributes &attributes = rightIndex.GetNodeAttributes(index);
-		switch(attributes.Type())
-		{
-			case FileSystemNodeType::Directory:
-				nodeDifferencesLock.Lock();
-				nodeDifferences.Insert(index, {NodeDifferenceType::UpdateMetadataOnly});
-				nodeDifferencesLock.Unlock();
-				break;
-			case FileSystemNodeType::File:
-			case FileSystemNodeType::Link:
-			{
-				String hash = rightIndex.ComputeNodeHash(index);
-				uint32 leftNodeIndexByHash = leftIndex.FindNodeIndexByHash(hash);
-
-				nodeDifferencesLock.Lock();
-				if(leftNodeIndexByHash == Unsigned<uint32>::Max()) //could not find hash value
-					nodeDifferences.Insert(index, {NodeDifferenceType::BackupFully});
-				else
-				{
-					const Path &filePath = rightIndex.GetNodePath(index);
-					if(leftIndex.GetNodePath(leftNodeIndexByHash) == filePath) //same node and same hash, only update metadata
-						nodeDifferences.Insert(index, {NodeDifferenceType::UpdateMetadataOnly});
-					else //same hash but different node -> moved node
-						nodeDifferences.Insert(index, {NodeDifferenceType::BackreferenceWithDifferentPath, leftNodeIndexByHash});
-				}
-				nodeDifferencesLock.Unlock();
-			}
-			break;
-		}
-
-		process2.IncFileCount();
-		process2.AddFinishedSize(attributes.Size());
-		//});
-	}
-	threadPool.WaitForAllTasksToComplete();
-	process2.Finished();
-
-	return nodeDifferences;
-}
-
 void SnapshotManager::EnsureNoDifferenceExists(const OSFileSystemNodeIndex &sourceIndex) const
 {
-	const Map<uint32, NodeDifference> diffNodeIndicesNew = this->ComputeDifference(sourceIndex, false);
-	if(!diffNodeIndicesNew.IsEmpty())
+	const NodeIndexDifferences diffNodeIndicesNew = this->ComputeDifference(sourceIndex, false);
+	if(!( diffNodeIndicesNew.deleted.IsEmpty() || diffNodeIndicesNew.differentData.IsEmpty() || diffNodeIndicesNew.differentMetadata.IsEmpty()|| diffNodeIndicesNew.moved.IsEmpty() ))
 		NOT_IMPLEMENTED_ERROR; //TODO: implement me, after the backup there should be no differences to source index
 }

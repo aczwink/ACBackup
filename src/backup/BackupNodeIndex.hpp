@@ -31,7 +31,7 @@ public:
 	//Methods
 	uint64 ComputeSumOfBlockSizes() const;
 	uint32 FindNodeIndexByHash(const String& hash) const;
-	FileSystemNodeInfo GetFileSystemNodeInfo(uint32 nodeIndex) const;
+	NodeInfo GetFileSystemNodeInfo(uint32 nodeIndex) const;
 	void Serialize(Serialization::XmlSerializer& xmlSerializer) const;
 
 	//Properties
@@ -71,11 +71,11 @@ private:
 
 	//Methods
 	void ComputeNodeChildren();
-	DynamicArray<Block> DeserializeBlocks(StdXX::Serialization::XmlDeserializer& xmlDeserializer, bool& ownsBlocks);
+	DynamicArray<Block> DeserializeBlocks(StdXX::Serialization::XmlDeserializer& xmlDeserializer, bool& ownsBlocks, Optional<enum CompressionSetting>& compressionSetting, Optional<Path>& owner);
 	Map<Crypto::HashAlgorithm, String> DeserializeHashes(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
 	void GenerateHashIndex();
 	void DeserializeNode(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
-	void SerializeBlocks(Serialization::XmlSerializer& xmlSerializer, const DynamicArray<Block>& blocks, bool ownsBlocks) const;
+	void SerializeBlocks(Serialization::XmlSerializer& xmlSerializer, const DynamicArray<Block>& blocks, bool ownsBlocks, Optional<CompressionSetting>& compressionSetting, Optional<Path>& owner) const;
 	void SerializeHashes(Serialization::XmlSerializer& xmlSerializer, const Map<Crypto::HashAlgorithm, String>& hashes) const;
 	void SerializeNode(Serialization::XmlSerializer& xmlSerializer, const Path &path, const BackupNodeAttributes& attributes) const;
 };

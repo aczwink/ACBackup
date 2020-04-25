@@ -17,8 +17,9 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#include <Std++.hpp>
+#include <StdXX.hpp>
 using namespace StdXX;
+using namespace StdXX::FileSystem;
 //Local
 #include "FileSystemNodeIndex.hpp"
 #include "../status/ProcessStatus.hpp"
@@ -41,11 +42,11 @@ private:
 	//Methods
 	void GenerateIndex();
 	void IndexDirectoryChildren(AutoPointer<const Directory> dir, const Path& path, ProcessStatus& findStatus);
-	void IndexNode(AutoPointer<const FileSystemNode> node, const Path& nodePath, ProcessStatus& findStatus);
+	void IndexNode(AutoPointer<const Node> node, const Path& nodePath, ProcessStatus& findStatus);
 
 	//Inline
 	inline Path MapNodePathToFileSystemPath(const Path &nodePath) const
 	{
-		return basePath.GetString() + nodePath.GetString();
+		return basePath.String() + nodePath.String();
 	}
 };

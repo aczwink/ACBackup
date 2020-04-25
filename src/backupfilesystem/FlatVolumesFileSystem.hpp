@@ -17,8 +17,9 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#include <Std++.hpp>
+#include <StdXX.hpp>
 using namespace StdXX;
+using namespace StdXX::FileSystem;
 //Local
 #include "../backup/BackupNodeIndex.hpp"
 
@@ -26,7 +27,7 @@ using namespace StdXX;
 class FlatVolumesBlockInputStream;
 class VolumesOutputStream;
 
-class FlatVolumesFileSystem : public FileSystem
+class FlatVolumesFileSystem : public RWFileSystem
 {
 	struct OpenVolumeForReading
 	{
@@ -48,18 +49,17 @@ public:
 	//Methods
 	void CloseFile(const VolumesOutputStream& writer);
 	UniquePointer<OutputStream> CreateFile(const Path &filePath) override;
+	void CreateLink(const Path &linkPath, const Path &linkTargetPath) override;
 	bool Exists(const Path &path) const override;
 	void Flush() override;
-	AutoPointer<FileSystemNode> GetNode(const Path &path) override;
-	AutoPointer<const FileSystemNode> GetNode(const Path &path) const override;
-	AutoPointer<Directory> GetRoot() override;
-	AutoPointer<const Directory> GetRoot() const override;
-	uint64 GetSize() const override;
+	AutoPointer<Node> GetNode(const Path &path) override;
+	AutoPointer<const Node> GetNode(const Path &path) const override;
 	void Move(const Path &from, const Path &to) override;
 	UniquePointer<InputStream> OpenLinkTargetAsStream(const Path& linkPath, bool verify) const;
 	uint32 ReadBytes(const FlatVolumesBlockInputStream& reader, void *destination, uint64 volumeNumber, uint64 offset, uint32 count) const;
 	void WriteBytes(const VolumesOutputStream& writer, const void* source, uint32 size);
 	void WriteProtect();
+	SpaceInfo QuerySpace() const override;
 
 private:
 	//Members

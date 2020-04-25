@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <Std++.hpp>
+#include <StdXX.hpp>
 //Local
 #include "../config/CompressionStatistics.hpp"
 #include "../config/ConfigManager.hpp"
@@ -30,6 +30,7 @@ static void AddIncompressibleFileExtensions(CompressionStatistics& compressionSt
         //archives
         u8"7z",
         u8"cab",
+        u8"dmg",
         u8"gz",
         u8"rar",
         u8"zip",

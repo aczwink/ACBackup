@@ -73,7 +73,7 @@ DirectoryIterator FlatVolumesDirectory::end() const
 	return nullptr;
 }
 
-FileSystemNodeInfo FlatVolumesDirectory::QueryInfo() const
+NodeInfo FlatVolumesDirectory::QueryInfo() const
 {
 	return this->index.GetFileSystemNodeInfo(this->directoryIndex);
 }
@@ -93,46 +93,22 @@ void FlatVolumesDirectory::CreateSubDirectory(const StdXX::String &name)
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
 }
 
-bool FlatVolumesDirectory::Exists(const StdXX::Path &path) const
+bool FlatVolumesDirectory::Exists(const Path &path) const
 {
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
 	return false;
 }
 
-StdXX::AutoPointer<StdXX::FileSystemNode> FlatVolumesDirectory::GetChild(const StdXX::String &name)
+StdXX::AutoPointer<Node> FlatVolumesDirectory::GetChild(const StdXX::String &name)
 {
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return StdXX::AutoPointer<FileSystemNode>();
+	return StdXX::AutoPointer<Node>();
 }
 
-StdXX::AutoPointer<const StdXX::FileSystemNode> FlatVolumesDirectory::GetChild(const StdXX::String &name) const
+StdXX::AutoPointer<const Node> FlatVolumesDirectory::GetChild(const StdXX::String &name) const
 {
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return StdXX::AutoPointer<const FileSystemNode>();
-}
-
-StdXX::FileSystem *FlatVolumesDirectory::GetFileSystem()
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return nullptr;
-}
-
-const StdXX::FileSystem *FlatVolumesDirectory::GetFileSystem() const
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return nullptr;
-}
-
-StdXX::AutoPointer<const StdXX::Directory> FlatVolumesDirectory::GetParent() const
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return StdXX::AutoPointer<const Directory>();
-}
-
-StdXX::Path FlatVolumesDirectory::GetPath() const
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return StdXX::Path();
+	return StdXX::AutoPointer<const Node>();
 }
 
 bool FlatVolumesDirectory::IsEmpty() const
@@ -141,7 +117,7 @@ bool FlatVolumesDirectory::IsEmpty() const
 	return false;
 }
 
-void FlatVolumesDirectory::ChangePermissions(const StdXX::Filesystem::NodePermissions &newPermissions)
+void FlatVolumesDirectory::ChangePermissions(const NodePermissions &newPermissions)
 {
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
 }

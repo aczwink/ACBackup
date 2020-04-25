@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -16,14 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
+#pragma once
 
-//Private methods
-void BackupNodeAttributes::ConfigureCompression(float32 compressionRate)
+enum class CompressionSetting
 {
-	int8 maxCompressionLevel = this->config.MaxCompressionLevel();
-
-	float32 c = (maxCompressionLevel+1) * (1 - compressionRate);
-	this->compressionLevel = static_cast<uint8>(round(c));
-	this->isCompressed = !((maxCompressionLevel == -1) or (this->compressionLevel == 0));
-	this->compressionLevel--;
-}
+	lzma
+};

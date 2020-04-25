@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <Std++.hpp>
+#include <StdXX.hpp>
 using namespace StdXX;
 //Local
 #include "../backup/BackupNodeIndex.hpp"
@@ -32,8 +32,8 @@ public:
 	}
 
 	//Methods
-	void ChangePermissions(const Filesystem::NodePermissions &newPermissions) override;
-	FileSystemNodeInfo QueryInfo() const override;
+	void ChangePermissions(const FileSystem::NodePermissions &newPermissions) override;
+	NodeInfo QueryInfo() const override;
 	Path ReadTarget() const override;
 
 private:

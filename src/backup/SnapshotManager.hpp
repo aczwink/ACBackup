@@ -16,11 +16,13 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <Std++.hpp>
+#pragma once
+#include <StdXX.hpp>
 using namespace StdXX;
 //Local
 #include "../indexing/FileSystemNodeIndex.hpp"
 #include "Snapshot.hpp"
+#include "../NodeIndexDifferenceResolver.hpp"
 
 class SnapshotManager
 {
@@ -59,11 +61,10 @@ private:
 	DynamicArray<UniquePointer<Snapshot>> snapshots;
 
 	//Methods
-	Map<uint32, NodeDifference> ComputeDifference(const OSFileSystemNodeIndex& sourceIndex, bool updateDefault) const;
+	NodeIndexDifferences ComputeDifference(const OSFileSystemNodeIndex& sourceIndex, bool updateDefault) const;
 	void EnsureNoDifferenceExists(const OSFileSystemNodeIndex& sourceIndex) const;
 	DynamicArray<Path> ListPathsInIndexDirectory();
 	void ReadInSnapshots();
-	Map<uint32, NodeDifference> ResolveDifferences(const BackupNodeIndex& leftIndex, const OSFileSystemNodeIndex& rightIndex, const BinaryTreeSet<uint32>& leftToRightDiffs, const BinaryTreeSet<uint32>& rightToLeftDiffs, bool updateDefault) const;
 
 	//Inline
 	inline const BackupNodeIndex* LastIndex() const

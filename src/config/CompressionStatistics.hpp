@@ -16,8 +16,9 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <Std++.hpp>
+#include <StdXX.hpp>
 using namespace StdXX;
+using namespace StdXX::FileSystem;
 
 class CompressionStatistics
 {
@@ -27,6 +28,9 @@ public:
 	explicit CompressionStatistics(const Path& path);
 
     //Methods
+	void AddCompressionRateSample(const String& fileExtension, float32 compressionRate);
+	uint8 GetCompressionLevel(float32 compressionRate) const;
+	float32 GetCompressionRate(const String& fileExtension);
     void Write(const Path& dirPath);
 
     //Inline
@@ -41,4 +45,5 @@ private:
 
     //Members
     Map<String, float32> compressionStats;
+	Mutex compressionStatsLock;
 };

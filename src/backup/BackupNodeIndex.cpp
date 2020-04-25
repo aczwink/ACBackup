@@ -31,6 +31,8 @@ static const char *const c_tag_node_name = u8"Node";
 static const char *const c_tag_node_attribute_type_name = u8"type";
 static const char *const c_tag_node_blocks_name = u8"Blocks";
 const char* const c_tag_node_blocks_attribute_owned_name = u8"owned";
+const char* const c_tag_node_blocks_attribute_owner_name = u8"owner";
+const char* const c_tag_node_blocks_attribute_compression_name = u8"compression";
 static const char *const c_tag_node_blocks_block_name = u8"Block";
 static const char *const c_tag_node_blocks_block_attribute_offset = u8"offset";
 static const char *const c_tag_node_blocks_block_attribute_size = u8"size";
@@ -80,12 +82,12 @@ namespace StdXX::Serialization
 	}
 
 	template <typename ArchiveType>
-	void CustomArchive(ArchiveType& ar, const String& name, FileSystemNodeType& fileSystemNodeType)
+	void CustomArchive(ArchiveType& ar, const String& name, NodeType& fileSystemNodeType)
 	{
-		StaticArray<Tuple<FileSystemNodeType, String>, 3> fileSystemNodeTypeMapping = { {
-			{ FileSystemNodeType::Directory, u8"directory"},
-			{ FileSystemNodeType::File, u8"file"},
-			{ FileSystemNodeType::Link, u8"link"},
+		StaticArray<Tuple<NodeType, String>, 3> fileSystemNodeTypeMapping = { {
+			{ NodeType::Directory, u8"directory"},
+			{ NodeType::File, u8"file"},
+			{ NodeType::Link, u8"link"},
 
 		} };
 		ar & Binding(name, StringMapping(fileSystemNodeType, fileSystemNodeTypeMapping));
@@ -130,11 +132,12 @@ uint32 BackupNodeIndex::FindNodeIndexByHash(const String& hash) const
 	return Unsigned<uint32>::Max();
 }
 
-FileSystemNodeInfo BackupNodeIndex::GetFileSystemNodeInfo(uint32 nodeIndex) const
+NodeInfo BackupNodeIndex::GetFileSystemNodeInfo(uint32 nodeIndex) const
 {
 	const BackupNodeAttributes& attributes = this->GetNodeAttributes(nodeIndex);
 
-	FileSystemNodeInfo fileSystemNodeInfo;
+	NodeInfo fileSystemNodeInfo;
+	fileSystemNodeInfo.size = attributes.Size();
 	fileSystemNodeInfo.storedSize = attributes.ComputeSumOfBlockSizes();
 	fileSystemNodeInfo.lastModifiedTime = attributes.LastModifiedTime();
 
@@ -169,7 +172,7 @@ void BackupNodeIndex::ComputeNodeChildren()
 	}
 }
 
-DynamicArray<Block> BackupNodeIndex::DeserializeBlocks(XmlDeserializer &xmlDeserializer, bool& ownsBlocks)
+DynamicArray<Block> BackupNodeIndex::DeserializeBlocks(XmlDeserializer &xmlDeserializer, bool& ownsBlocks, Optional<enum CompressionSetting>& compressionSetting, Optional<Path>& owner)
 {
 	if(!xmlDeserializer.HasChildElement(c_tag_node_blocks_name))
 		return {};
@@ -178,6 +181,8 @@ DynamicArray<Block> BackupNodeIndex::DeserializeBlocks(XmlDeserializer &xmlDeser
 
 	xmlDeserializer.EnterAttributes();
 	xmlDeserializer & Binding(c_tag_node_blocks_attribute_owned_name, ownsBlocks);
+	xmlDeserializer & Binding(c_tag_node_blocks_attribute_owner_name, owner);
+	xmlDeserializer & Binding(c_tag_node_blocks_attribute_compression_name, compressionSetting);
 	xmlDeserializer.LeaveAttributes();
 	
 	DynamicArray<Block> blocks;
@@ -233,7 +238,7 @@ void BackupNodeIndex::DeserializeNode(XmlDeserializer& xmlDeserializer)
 {
 	xmlDeserializer.EnterAttributes();
 
-	FileSystemNodeType type;
+	NodeType type;
 	CustomArchive(xmlDeserializer, c_tag_node_attribute_type_name, type);
 
 	xmlDeserializer.LeaveAttributes();
@@ -254,14 +259,19 @@ void BackupNodeIndex::DeserializeNode(XmlDeserializer& xmlDeserializer)
 		xmlDeserializer & Binding(c_tag_node_size_name, size);
 
 	bool ownsBlocks = false;
-	DynamicArray<Block> blocks = this->DeserializeBlocks(xmlDeserializer, ownsBlocks);
+	Optional<CompressionSetting> compressionSetting;
+	Optional<Path> owner;
+	DynamicArray<Block> blocks = this->DeserializeBlocks(xmlDeserializer, ownsBlocks, compressionSetting, owner);
 	Map<Crypto::HashAlgorithm, String> hashes = this->DeserializeHashes(xmlDeserializer);
 
-	UniquePointer<FileSystemNodeAttributes> attributes = new BackupNodeAttributes(type, size, lastModifiedTime, ownsBlocks, Move(blocks), Move(hashes));
+	UniquePointer<BackupNodeAttributes> attributes = new BackupNodeAttributes(type, size, lastModifiedTime, Move(blocks), Move(hashes));
+	attributes->OwnsBlocks(ownsBlocks);
+	attributes->CompressionSetting(compressionSetting);
+	attributes->BackReferenceTarget(owner);
 	this->AddNode(path, Move(attributes));
 }
 
-void BackupNodeIndex::SerializeBlocks(Serialization::XmlSerializer& xmlSerializer, const DynamicArray<Block> &blocks, bool ownsBlocks) const
+void BackupNodeIndex::SerializeBlocks(Serialization::XmlSerializer& xmlSerializer, const DynamicArray<Block> &blocks, bool ownsBlocks, Optional<CompressionSetting>& compressionSetting, Optional<Path>& owner) const
 {
 	if(blocks.IsEmpty())
 		return;
@@ -269,6 +279,8 @@ void BackupNodeIndex::SerializeBlocks(Serialization::XmlSerializer& xmlSerialize
 	xmlSerializer.EnterElement(c_tag_node_blocks_name);
 	xmlSerializer.EnterAttributes();
 	xmlSerializer & Binding(c_tag_node_blocks_attribute_owned_name, ownsBlocks);
+	xmlSerializer & Binding(c_tag_node_blocks_attribute_owner_name, owner);
+	xmlSerializer & Binding(c_tag_node_blocks_attribute_compression_name, compressionSetting);
 	xmlSerializer.LeaveAttributes();
 
 	for(Block block : blocks)
@@ -297,7 +309,7 @@ void BackupNodeIndex::SerializeNode(XmlSerializer& xmlSerializer, const Path &pa
 	xmlSerializer.EnterElement(c_tag_node_name);
 
 	xmlSerializer.EnterAttributes();
-	FileSystemNodeType type = attributes.Type();
+	NodeType type = attributes.Type();
 	CustomArchive(xmlSerializer, c_tag_node_attribute_type_name, type);
 	xmlSerializer.LeaveAttributes();
 
@@ -309,10 +321,12 @@ void BackupNodeIndex::SerializeNode(XmlSerializer& xmlSerializer, const Path &pa
 	}
 
 	uint64 size = attributes.Size();
-	if(attributes.Type() != FileSystemNodeType::Directory)
+	if(attributes.Type() != NodeType::Directory)
 		xmlSerializer & Binding(c_tag_node_size_name, size);
 
-	this->SerializeBlocks(xmlSerializer, attributes.Blocks(), attributes.OwnsBlocks());
+	Optional<CompressionSetting> compressionSetting = attributes.CompressionSetting();
+	Optional<Path> backreferenceTarget = attributes.BackReferenceTarget();
+	this->SerializeBlocks(xmlSerializer, attributes.Blocks(), attributes.OwnsBlocks(), compressionSetting, backreferenceTarget);
 	this->SerializeHashes(xmlSerializer, attributes.HashValues());
 
 	xmlSerializer.LeaveElement();

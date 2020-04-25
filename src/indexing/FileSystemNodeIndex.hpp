@@ -17,24 +17,11 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
-#include <Std++.hpp>
+#include <StdXX.hpp>
 using namespace StdXX;
+using namespace StdXX::FileSystem;
 //Local
 #include "FileSystemNodeAttributes.hpp"
-
-enum class NodeDifferenceType
-{
-	BackupFully,
-	BackreferenceWithDifferentPath,
-	Delete,
-	UpdateMetadataOnly,
-};
-
-struct NodeDifference
-{
-	NodeDifferenceType type;
-	uint32 moveIndex;
-};
 
 class FileSystemNodeIndex
 {
@@ -44,24 +31,18 @@ public:
 
 	//Methods
 	/**
-	 * Returns the indices from this index that are different from other
-	 * @return
-	 */
-	BinaryTreeSet<uint32> ComputeDifference(const FileSystemNodeIndex& other) const;
-	/**
 	 * No compression or filtering whatsoever.
 	 * The raw user data file size.
 	 * @return
 	 */
 	uint64 ComputeTotalSize() const;
 	uint64 ComputeTotalSize(const BinaryTreeSet<uint32>& nodeIndices) const;
-	uint64 ComputeTotalSize(const Map<uint32, NodeDifference>& nodeIndices) const;
 
 	//Inline
 	inline uint32 AddNode(const Path& path, UniquePointer<FileSystemNodeAttributes>&& attributes)
 	{
 		uint32 index = this->nodeAttributes.Push(Move(attributes));
-		this->pathMap.Insert(path.IsAbsolute() ? path : u8"/" + path.GetString(), index);
+		this->pathMap.Insert(path.IsAbsolute() ? path : u8"/" + path.String(), index);
 		return index;
 	}
 

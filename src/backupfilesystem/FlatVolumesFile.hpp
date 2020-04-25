@@ -16,12 +16,12 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <Std++.hpp>
+#include <StdXX.hpp>
 //Local
 #include "../backup/BackupNodeAttributes.hpp"
 #include "FlatVolumesFileSystem.hpp"
 
-class FlatVolumesFile : public StdXX::File
+class FlatVolumesFile : public File
 {
 public:
 	//Constructor
@@ -32,11 +32,10 @@ public:
 	}
 
 	//Methods
-	void ChangePermissions(const Filesystem::NodePermissions &newPermissions) override;
-	uint64 GetSize() const override;
+	void ChangePermissions(const NodePermissions &newPermissions) override;
 	UniquePointer<InputStream> OpenForReading(bool verify) const override;
 	UniquePointer<OutputStream> OpenForWriting() override;
-	FileSystemNodeInfo QueryInfo() const override;
+	NodeInfo QueryInfo() const override;
 
 private:
 	//Members

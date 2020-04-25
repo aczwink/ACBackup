@@ -18,58 +18,196 @@
  */
 //Local
 #include "commands/Commands.hpp"
-#include "InjectionContainer.hpp"
+#include "backup/SnapshotManager.hpp"
+#include "config/CompressionStatistics.hpp"
+//Namespaces
+using namespace StdXX::CommandLine;
 
-static void PrintManual()
+struct AutoInjectionClearer
 {
-    stdOut << u8"Usage: ACBackup [options...]" << endl
-            << endl
-
-            << u8"-a sourceDirectory, --add-snapshot sourceDirectory" << endl
-            << u8"  " << u8"Backup a new snapshot into backup directory. Verifies the snapshot after backup." << endl
-            << endl
-
-            << u8"-i, --init" << endl
-            << u8"  " << u8"Initialize new empty backup directory in current working directory." << endl
-            << endl
-
-			<< u8"-m snapshotName mountPoint, --mount snapshotName mountPoint" << endl
-			<< u8"  " << u8"Mounts a snapshot into the filesystem. The mounted filesystem can only be read but not be modified." << endl
-			<< endl
-
-			<< u8"-v snapshotName, --verify-snapshot snapshotName" << endl
-			<< u8"  " << u8"Verifies the integrity of all data including metadata of a snapshot." << endl
-			<< endl
-
-			<< u8"-V snapshotName, --verify-snapshot-fully snapshotName" << endl
-			<< u8"  " << u8"Verifies the integrity of all data including metadata of a snapshot including references to older snapshots." << endl
-			<< endl
-
-			<< u8"--verify-all-snapshots" << endl
-			<< u8"  " << u8"Verifies the integrity of all data including metadata of all snapshots (i.e. the whole history)." << endl
-			<< endl
-
-			<< u8"--verify-newest-snapshot" << endl
-			<< u8"  " << u8"Verifies the integrity of all data including metadata of the newest snapshot including references to older snapshots." << endl
-			<< endl;
-}
+	~AutoInjectionClearer()
+	{
+		InjectionContainer::Instance().UnregisterAll();
+	}
+};
 
 int32 Main(const String& programName, const FixedArray<String>& args)
 {
-    //TODO debugging
-    String newestSnapshot = "snapshot_2020-04-19_13_59_08";
-	CommandInit(String(u8"/home/amir/opt"));
-	//CommandAddSnapshot();
-	CommandMountSnapshot(newestSnapshot, String(u8"/home/amir/mount"));
-	//CommandVerifyAllSnapshots();
-	//CommandVerifyNewestSnapshot();
-	//CommandVerifySnapshot(u8"snapshot_2020-04-14_18_20_20", false);
-    //TODO end debugging
+	AutoInjectionClearer autoInjectionClearer;
 
-    PrintManual();
+	Parser commandLineParser(programName);
+	commandLineParser.AddHelpOption();
 
-	InjectionContainer::Instance().UnregisterAll();
-    return EXIT_FAILURE;
+	OptionWithArgument snapshotName(u8's', u8"snapshot-name", u8"Use another snapshot than the newest one as source");
 
-    return EXIT_SUCCESS;
+	SubCommandArgument subCommandArgument(u8"command", u8"The command that should be executed");
+
+
+	Group addSnapshot(u8"add-snapshot", u8"Backup a new snapshot into backup directory. Verifies the snapshot after backup.");
+	subCommandArgument.AddCommand(addSnapshot);
+
+
+	Group diff(u8"diff", u8"Finds the differences between the newest snapshot and the source directory.");
+
+	OptionWithArgument sourceSnapshotName(u8's', u8"source-snapshot-name", u8"Use another snapshot than the newest one as source");
+	diff.AddOption(sourceSnapshotName);
+	OptionWithArgument targetSnapshotName(u8'd', u8"target-snapshot-name", u8"Instead of comparing against the source directory, compare against a given snapshot");
+	diff.AddOption(targetSnapshotName);
+
+	subCommandArgument.AddCommand(diff);
+
+
+	Group hashes(u8"hashes", u8"Outputs hashes with of all nodes including backreferences of the newest snapshot.");
+
+	hashes.AddOption(snapshotName);
+	OptionWithArgument hashAlgorithm(u8'a', u8"algorithm", u8"Use another hash algorithm than the one defined in the config");
+	hashes.AddOption(hashAlgorithm);
+
+	subCommandArgument.AddCommand(hashes);
+
+
+	Group init(u8"init", u8"Initialize new empty backup directory in current working directory.");
+	PathArgument sourceDirectory(u8"sourceDir", u8"The root directory that serves as a source for backup.");
+	init.AddPositionalArgument(sourceDirectory);
+	subCommandArgument.AddCommand(init);
+
+
+	Group mount(u8"mount", u8"Mounts the newest snapshot into the filesystem. The mounted filesystem can only be read but not be modified.");
+	mount.AddOption(snapshotName);
+	PathArgument mountPoint(u8"mountPoint", u8"The path where the snapshot will be mounted in.");
+	mount.AddPositionalArgument(mountPoint);
+	subCommandArgument.AddCommand(mount);
+
+
+
+	Group restoreSnapshot(u8"restore-snapshot", u8"Restores the newest snapshot back into a specified directory in the filesystem.");
+	restoreSnapshot.AddOption(snapshotName);
+	PathArgument restorePoint(u8"restorePoint", u8"The path where the snapshot will be restored to.");
+	restoreSnapshot.AddPositionalArgument(restorePoint);
+	subCommandArgument.AddCommand(restoreSnapshot);
+
+
+	Group stats(u8"stats", u8"Output statistical information about the newest snapshot.");
+	stats.AddOption(snapshotName);
+	subCommandArgument.AddCommand(stats);
+
+
+
+	Group verify(u8"verify", u8"Verifies the integrity of all data including metadata of the newest snapshot including references to older snapshots.");
+	verify.AddOption(snapshotName);
+	Option local(u8'l', u8"local", u8"Skip backreferences");
+	verify.AddOption(local);
+	subCommandArgument.AddCommand(verify);
+
+
+	CommandLine::Group verifyAll(u8"verify-all", u8"Verifies the integrity of all data including metadata of all snapshots (i.e. the whole history).");
+	subCommandArgument.AddCommand(verifyAll);
+
+
+	commandLineParser.AddPositionalArgument(subCommandArgument);
+
+	if(!commandLineParser.Parse(args))
+	{
+		stdErr << commandLineParser.GetErrorText() << endl;
+		return EXIT_FAILURE;
+	}
+
+	if(commandLineParser.IsHelpActivated())
+	{
+		commandLineParser.PrintHelp();
+		return EXIT_SUCCESS;
+	}
+
+	const MatchResult& matchResult = commandLineParser.ParseResult();
+
+	if(matchResult.IsActivated(init))
+		return CommandInit(sourceDirectory.Value(matchResult));
+
+	InjectionContainer &ic = InjectionContainer::Instance();
+
+	ConfigManager configManager;
+	ic.Register(configManager);
+
+	UniquePointer<StatusTracker> statusTracker = StatusTracker::CreateInstance(configManager.Config().statusTrackerType);
+	ic.Register(*statusTracker);
+
+	StaticThreadPool threadPool;
+	ic.Register(threadPool);
+
+	SnapshotManager snapshotManager;
+
+	if(matchResult.IsActivated(addSnapshot))
+	{
+		CompressionStatistics compressionStatistics(configManager.Config().backupPath);
+		ic.Register(compressionStatistics);
+
+		return CommandAddSnapshot(snapshotManager);
+	}
+	else if(matchResult.IsActivated(diff))
+	{
+		if(snapshotManager.Snapshots().IsEmpty())
+		{
+			stdErr << u8"No snapshot has ever been created." << endl;
+			return EXIT_FAILURE;
+		}
+		String sourceSnapshotNameText = matchResult.IsActivated(sourceSnapshotName) ? sourceSnapshotName.Value(matchResult) : snapshotManager.NewestSnapshot().Name();
+
+		if(matchResult.IsActivated(targetSnapshotName))
+			return CommandDiffSnapshots(snapshotManager, sourceSnapshotNameText, targetSnapshotName.Value(matchResult));
+		return CommandDiffSnapshotWithSourceDirectory(snapshotManager, sourceSnapshotNameText);
+	}
+
+	if(snapshotManager.Snapshots().IsEmpty())
+	{
+		stdErr << u8"No snapshot has ever been created." << endl;
+		return EXIT_FAILURE;
+	}
+	const Snapshot* snapshot;
+	if(matchResult.IsActivated(snapshotName))
+	{
+		String snapshotNameText = snapshotName.Value(matchResult);
+		snapshot = snapshotManager.FindSnapshot(snapshotNameText);
+		if(!snapshot)
+		{
+			stdErr << u8"Snapshot with name '" << snapshotNameText << u8"' not found." << endl;
+			return EXIT_FAILURE;
+		}
+	}
+	else
+		snapshot = &snapshotManager.NewestSnapshot();
+
+	if(matchResult.IsActivated(hashes))
+	{
+		if(matchResult.IsActivated(hashAlgorithm))
+			return CommandOutputSnapshotHashValues(*snapshot, hashAlgorithm.Value(matchResult));
+		return CommandOutputSnapshotHashValues(*snapshot);
+	}
+	else if(matchResult.IsActivated(mount))
+	{
+		snapshot->Mount(mountPoint.Value(matchResult));
+		return EXIT_SUCCESS;
+	}
+	else if(matchResult.IsActivated(restoreSnapshot))
+	{
+		snapshot->Restore(restorePoint.Value(matchResult));
+		return EXIT_SUCCESS;
+	}
+	else if(matchResult.IsActivated(stats))
+	{
+		return CommandOutputSnapshotStats(*snapshot);
+	}
+	else if(matchResult.IsActivated(verify))
+	{
+		bool localBool = snapshot != &snapshotManager.NewestSnapshot();
+		if(matchResult.IsActivated(local))
+			localBool = true;
+		return CommandVerifySnapshot(snapshotManager, *snapshot, !localBool);
+	}
+	else if(matchResult.IsActivated(verifyAll))
+	{
+		return CommandVerifyAllSnapshots();
+	}
+
+	stdErr << commandLineParser.GetErrorText() << endl;
+	return EXIT_FAILURE;
 }

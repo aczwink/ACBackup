@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <Std++.hpp>
+#include <StdXX.hpp>
 using namespace StdXX;
 //Local
 #include "../indexing/OSFileSystemNodeIndex.hpp"
@@ -24,24 +24,11 @@ using namespace StdXX;
 #include "../backup/SnapshotManager.hpp"
 #include "../config/CompressionStatistics.hpp"
 
-int32 CommandAddSnapshot()
+int32 CommandAddSnapshot(SnapshotManager& snapshotManager)
 {
 	InjectionContainer& ic = InjectionContainer::Instance();
 
-	ConfigManager configManager;
-	ic.Register(configManager);
-
-	CompressionStatistics compressionStatistics(configManager.Config().backupPath);
-	ic.Register(compressionStatistics);
-
-	UniquePointer<StatusTracker> statusTracker = StatusTracker::CreateInstance(configManager.Config().statusTrackerType);
-	ic.Register(*statusTracker);
-
-	StaticThreadPool threadPool;
-	ic.Register(threadPool);
-
-	SnapshotManager snapshotManager;
-	OSFileSystemNodeIndex sourceIndex(configManager.Config().sourcePath);
+	OSFileSystemNodeIndex sourceIndex(ic.Get<ConfigManager>().Config().sourcePath);
 	snapshotManager.AddSnapshot(sourceIndex);
 
 	return EXIT_SUCCESS;

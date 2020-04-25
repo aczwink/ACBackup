@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -19,6 +19,9 @@
 #pragma once
 //Local
 #include "../indexing/FileSystemNodeAttributes.hpp"
+#include "../CompressionSetting.hpp"
+//Namespaces
+using namespace StdXX::FileSystem;
 
 struct Block
 {
@@ -31,8 +34,8 @@ class BackupNodeAttributes : public FileSystemNodeAttributes
 {
 public:
 	//Constructors
-	inline BackupNodeAttributes(FileSystemNodeType type, uint64 size, const Optional<DateTime>& lastModifiedTime, bool ownsBlocks, DynamicArray<Block>&& blocks, Map<Crypto::HashAlgorithm, String>&& hashes)
-		: FileSystemNodeAttributes(type, size, lastModifiedTime), ownsBlocks(ownsBlocks),
+	inline BackupNodeAttributes(NodeType type, uint64 size, const Optional<DateTime>& lastModifiedTime, DynamicArray<Block>&& blocks, Map<Crypto::HashAlgorithm, String>&& hashes)
+		: FileSystemNodeAttributes(type, size, lastModifiedTime),
 		blocks(Forward<DynamicArray<Block>>(blocks)), hashes(Forward<Map<Crypto::HashAlgorithm, String>>(hashes))
 	{
 	}
@@ -44,9 +47,29 @@ public:
 	BackupNodeAttributes(const BackupNodeAttributes& attributes) = default;
 
 	//Properties
+	inline const Optional<Path>& BackReferenceTarget() const
+	{
+		return this->backReferenceTarget;
+	}
+
+	inline void BackReferenceTarget(const Optional<Path>& backreferenceTarget)
+	{
+		this->backReferenceTarget = backreferenceTarget;
+	}
+
 	inline const DynamicArray<Block>& Blocks() const
 	{
 		return this->blocks;
+	}
+
+	inline const Optional<enum CompressionSetting>& CompressionSetting() const
+	{
+		return this->compressionSetting;
+	}
+
+	inline void CompressionSetting(const Optional<enum CompressionSetting>& compressionSetting)
+	{
+		this->compressionSetting = compressionSetting;
 	}
 
 	inline const String& Hash(Crypto::HashAlgorithm hashAlgorithm) const
@@ -66,7 +89,7 @@ public:
 
 	inline void OwnsBlocks(bool value)
 	{
-		this->ownsBlocks = false;
+		this->ownsBlocks = value;
 	}
 
 	//Methods
@@ -84,6 +107,8 @@ public:
 private:
 	//Members
 	bool ownsBlocks;
+	Optional<enum CompressionSetting> compressionSetting;
+	Optional<Path> backReferenceTarget;
 	DynamicArray<Block> blocks;
 	Map<Crypto::HashAlgorithm, String> hashes;
 };

@@ -74,47 +74,9 @@ int32 CommandVerifyAllSnapshots()
 	return EXIT_SUCCESS;
 }
 
-int32 CommandVerifyNewestSnapshot()
+int32 CommandVerifySnapshot(SnapshotManager& snapshotManager, const Snapshot& snapshot, bool full)
 {
-	InjectionContainer &ic = InjectionContainer::Instance();
-
-	ConfigManager configManager;
-	ic.Register(configManager);
-
-	UniquePointer<StatusTracker> statusTracker = StatusTracker::CreateInstance(configManager.Config().statusTrackerType);
-	ic.Register(*statusTracker);
-
-	StaticThreadPool threadPool;
-	ic.Register(threadPool);
-
-	SnapshotManager snapshotManager;
-	const Snapshot &snapshot = snapshotManager.NewestSnapshot();
-	Verify(snapshotManager, snapshot, true); //newest snapshot means always full verification
-
-	return EXIT_SUCCESS;
-}
-
-int32 CommandVerifySnapshot(const String& snapshotName, bool full)
-{
-	InjectionContainer &ic = InjectionContainer::Instance();
-
-	ConfigManager configManager;
-	ic.Register(configManager);
-
-	UniquePointer<StatusTracker> statusTracker = StatusTracker::CreateInstance(configManager.Config().statusTrackerType);
-	ic.Register(*statusTracker);
-
-	StaticThreadPool threadPool;
-	ic.Register(threadPool);
-
-	SnapshotManager snapshotManager;
-	const Snapshot* snapshot = snapshotManager.FindSnapshot(snapshotName);
-	if(!snapshot)
-	{
-		stdErr << u8"Snapshot with name '" << snapshotName << u8"' not found." << endl;
-		return EXIT_FAILURE;
-	}
-	Verify(snapshotManager, *snapshot, full);
+	Verify(snapshotManager, snapshot, full);
 
 	return EXIT_SUCCESS;
 }

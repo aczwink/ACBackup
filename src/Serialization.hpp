@@ -17,19 +17,47 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 //Local
-#include <Std++.hpp>
+#include <StdXX.hpp>
 
 //Constants
 static const char *const c_hashAlgorithm_sha512_256 = u8"sha512/256";
 
 namespace StdXX::Serialization
 {
+	inline StaticArray<Tuple<Crypto::HashAlgorithm, String>, 2> HashMapping()
+	{
+		return { {
+			{ Crypto::HashAlgorithm::MD5, u8"md5" },
+			{ Crypto::HashAlgorithm::SHA512_256, c_hashAlgorithm_sha512_256 },
+		} };
+	}
+
+	template <typename ArchiveType>
+	void CustomArchive(ArchiveType& ar, const String& name, CompressionSetting& compressionSetting)
+	{
+		StaticArray<Tuple<CompressionSetting, String>, 1> settingMapping = { {
+			{ CompressionSetting::lzma, u8"lzma"}
+		} };
+		ar & Binding(name, StringMapping(compressionSetting, settingMapping));
+	}
+
+	template <typename ArchiveType>
+	inline ArchiveType& operator<<(ArchiveType& serializer, const Binding<CompressionSetting>& binding)
+	{
+		CustomArchive(serializer, binding.name, binding.value);
+		return serializer;
+	}
+
+	template <typename ArchiveType>
+	inline ArchiveType& operator>>(ArchiveType& deserializer, const Binding<CompressionSetting>& binding)
+	{
+		CustomArchive(deserializer, binding.name, binding.value);
+		return deserializer;
+	}
+
 	template <typename ArchiveType>
 	void CustomArchive(ArchiveType& ar, const String& name, Crypto::HashAlgorithm& hashAlgorithm)
 	{
-		StaticArray<Tuple<Crypto::HashAlgorithm, String>, 1> hashAlgorithmMapping = { {
-			{ Crypto::HashAlgorithm::SHA512_256, c_hashAlgorithm_sha512_256}
-		} };
-		ar & Binding(name, StringMapping(hashAlgorithm, hashAlgorithmMapping));
+		ar & Binding(name, StringMapping(hashAlgorithm, HashMapping()));
 	}
 }
