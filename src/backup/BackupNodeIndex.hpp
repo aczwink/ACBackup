@@ -44,24 +44,19 @@ public:
 	inline void AddBlock(const Path& path, uint64 volumeNumber, uint64 offset, uint64 size)
 	{
 		uint32 nodeIndex = this->GetNodeIndex(path);
-		BackupNodeAttributes& attributes = this->GetNodeAttributes(nodeIndex);
+		BackupNodeAttributes& attributes = this->GetChangeableNodeAttributes(nodeIndex);
 		attributes.AddBlock({ .volumeNumber =  volumeNumber, .offset = offset, .size = size });
-	}
-
-	inline BackupNodeAttributes& GetNodeAttributes(uint32 index)
-	{
-		return (BackupNodeAttributes&)*this->nodeAttributes[index];
 	}
 
 	inline const BackupNodeAttributes& GetNodeAttributes(uint32 index) const
 	{
-		return (BackupNodeAttributes&)*this->nodeAttributes[index];
+        return (BackupNodeAttributes&)FileSystemNodeIndex::GetNodeAttributes(index);
 	}
 
 	inline bool HasNodeData(uint32 index) const
 	{
 		const BackupNodeAttributes &attributes = this->GetNodeAttributes(index);
-		return attributes.OwnsBlocks();
+		return attributes.OwnsBlocks() or (attributes.Size() == 0);
 	}
 
 private:
@@ -73,9 +68,17 @@ private:
 	void ComputeNodeChildren();
 	DynamicArray<Block> DeserializeBlocks(StdXX::Serialization::XmlDeserializer& xmlDeserializer, bool& ownsBlocks, Optional<enum CompressionSetting>& compressionSetting, Optional<Path>& owner);
 	Map<Crypto::HashAlgorithm, String> DeserializeHashes(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
-	void GenerateHashIndex();
 	void DeserializeNode(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
+	UniquePointer<NodePermissions> DeserializePermissions(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
+    void GenerateHashIndex();
 	void SerializeBlocks(Serialization::XmlSerializer& xmlSerializer, const DynamicArray<Block>& blocks, bool ownsBlocks, Optional<CompressionSetting>& compressionSetting, Optional<Path>& owner) const;
 	void SerializeHashes(Serialization::XmlSerializer& xmlSerializer, const Map<Crypto::HashAlgorithm, String>& hashes) const;
 	void SerializeNode(Serialization::XmlSerializer& xmlSerializer, const Path &path, const BackupNodeAttributes& attributes) const;
+	void SerializePermissions(Serialization::XmlSerializer& xmlSerializer, const NodePermissions& nodePermissions) const;
+
+	//Inline
+    inline BackupNodeAttributes& GetChangeableNodeAttributes(uint32 index)
+    {
+        return (BackupNodeAttributes&)FileSystemNodeIndex::GetNodeAttributes(index);
+    }
 };

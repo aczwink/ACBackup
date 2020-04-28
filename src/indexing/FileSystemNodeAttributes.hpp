@@ -20,16 +20,19 @@
 #include <StdXX.hpp>
 using namespace StdXX;
 using namespace StdXX::FileSystem;
+//Local
+#include "../Util.hpp"
 
 class FileSystemNodeAttributes
 {
 public:
 	//Constructors
-	inline FileSystemNodeAttributes(NodeType type, uint64 size, const Optional<DateTime>& lastModifiedTime)
+	inline FileSystemNodeAttributes(NodeType type, uint64 size, const Optional<DateTime>& lastModifiedTime, UniquePointer<NodePermissions>&& permissions)
 	{
 		this->type = type;
 		this->size = size;
 		this->lastModifiedTime = lastModifiedTime;
+        this->permissions = Move(permissions);
 	}
 
 	inline FileSystemNodeAttributes(const AutoPointer<const Directory>& directory)
@@ -51,7 +54,10 @@ public:
 		this->Init(link);
 	}
 
-	FileSystemNodeAttributes(const FileSystemNodeAttributes& attributes) = default; //copy ctor
+	inline FileSystemNodeAttributes(const FileSystemNodeAttributes& attributes)
+    {
+	    *this = attributes;
+    }
 
 	//Destructor
 	virtual ~FileSystemNodeAttributes() = default;
@@ -61,6 +67,11 @@ public:
 	{
 		return this->lastModifiedTime;
 	}
+
+	inline const NodePermissions& Permissions() const
+    {
+	    return *this->permissions;
+    }
 
 	inline uint64 Size() const
 	{
@@ -73,7 +84,15 @@ public:
 	}
 
 	//Operators
-	FileSystemNodeAttributes& operator=(const FileSystemNodeAttributes&) = default;
+	FileSystemNodeAttributes& operator=(const FileSystemNodeAttributes& attributes)
+    {
+        this->type = attributes.type;
+        this->size = attributes.size;
+        this->permissions = Clone(*attributes.permissions);
+        this->lastModifiedTime = attributes.lastModifiedTime;
+
+        return *this;
+    }
 
 	//Inline operators
 	inline bool operator==(const FileSystemNodeAttributes& other) const
@@ -98,15 +117,18 @@ private:
 	//Members
 	NodeType type;
 	uint64 size;
+	UniquePointer<NodePermissions> permissions;
 	Optional<DateTime> lastModifiedTime;
 
 	//Inline
+    //template <typename Type::EnableIf_t<Type::IsMoveAssignable_v<DateTime>, bool> = false>
 	inline void Init(const AutoPointer<const Node>& node)
 	{
-		const NodeInfo info = node->QueryInfo();
+		NodeInfo info = node->QueryInfo();
 
 		this->size = info.size;
 		if(info.lastModifiedTime.HasValue())
 			this->lastModifiedTime = info.lastModifiedTime;
+		this->permissions = Move(info.permissions);
 	}
 };

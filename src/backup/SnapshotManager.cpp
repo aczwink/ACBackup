@@ -46,7 +46,7 @@ void SnapshotManager::AddSnapshot(const OSFileSystemNodeIndex& sourceIndex)
 	StaticThreadPool& threadPool = InjectionContainer::Instance().Get<StaticThreadPool>();
 	for(uint32 index : diff.differentData)
 	{
-		threadPool.EnqueueTask([&snapshot, &index, &sourceIndex, &process]()
+		threadPool.EnqueueTask([&snapshot, index, &sourceIndex, &process]()
 		{
 			snapshot->BackupNode(index, sourceIndex, process);
 			process.IncFinishedCount();
@@ -198,6 +198,6 @@ void SnapshotManager::ReadInSnapshots()
 void SnapshotManager::EnsureNoDifferenceExists(const OSFileSystemNodeIndex &sourceIndex) const
 {
 	const NodeIndexDifferences diffNodeIndicesNew = this->ComputeDifference(sourceIndex, false);
-	if(!( diffNodeIndicesNew.deleted.IsEmpty() || diffNodeIndicesNew.differentData.IsEmpty() || diffNodeIndicesNew.differentMetadata.IsEmpty()|| diffNodeIndicesNew.moved.IsEmpty() ))
+	if(diffNodeIndicesNew.Exist())
 		throw ErrorHandling::VerificationFailedException();
 }

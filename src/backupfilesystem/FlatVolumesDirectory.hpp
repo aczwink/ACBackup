@@ -36,7 +36,7 @@ public:
 
 	//NOT IMPLEMENTED
 	StdXX::UniquePointer<StdXX::OutputStream> CreateFile(const StdXX::String &name) override;
-	void CreateSubDirectory(const StdXX::String &name) override;
+	void CreateSubDirectory(const StdXX::String &name, const FileSystem::NodePermissions* permissions) override;
 	bool Exists(const Path &path) const override;
 	StdXX::AutoPointer<Node> GetChild(const StdXX::String &name) override;
 	StdXX::AutoPointer<const Node> GetChild(const StdXX::String &name) const override;

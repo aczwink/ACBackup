@@ -88,7 +88,7 @@ StdXX::UniquePointer<StdXX::OutputStream> FlatVolumesDirectory::CreateFile(const
 	return StdXX::UniquePointer<StdXX::OutputStream>();
 }
 
-void FlatVolumesDirectory::CreateSubDirectory(const StdXX::String &name)
+void FlatVolumesDirectory::CreateSubDirectory(const StdXX::String &name, const FileSystem::NodePermissions* permissions)
 {
 	NOT_IMPLEMENTED_ERROR; //implement me
 }

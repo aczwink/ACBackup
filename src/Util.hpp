@@ -20,5 +20,6 @@
 using namespace StdXX;
 using namespace StdXX::FileSystem;
 
+UniquePointer<NodePermissions> Clone(const NodePermissions& permissions);
 void UnprotectFile(const Path& filePath);
 void WriteProtectFile(const Path& filePath);

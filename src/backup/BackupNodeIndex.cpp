@@ -38,6 +38,9 @@ static const char *const c_tag_node_blocks_block_attribute_offset = u8"offset";
 static const char *const c_tag_node_blocks_block_attribute_size = u8"size";
 static const char *const c_tag_node_blocks_block_attribute_volumeNumber = u8"volumeNumber";
 static const char *const c_tag_node_lastModified_name = u8"LastModified";
+static const char *const c_tag_node_permissions_name = u8"Permissions";
+static const char* const c_tag_node_permissions_attribute_type_name = u8"type";
+static const char *const c_tag_node_permissions_attribute_type_POSIX = u8"POSIX";
 static const char *const c_tag_node_size_name = u8"Size";
 
 static const char *const c_tag_nodes_name = u8"Nodes";
@@ -92,6 +95,26 @@ namespace StdXX::Serialization
 		} };
 		ar & Binding(name, StringMapping(fileSystemNodeType, fileSystemNodeTypeMapping));
 	}
+
+    template <typename ArchiveType>
+    void CustomArchive(ArchiveType& ar, POSIXPermissions& posixPermissions)
+    {
+	    int32 uid, gid;
+        ar & Binding(u8"owner", uid);
+        ar & Binding(u8"group", gid);
+        uint32 mode;
+        ar & Binding(u8"mode", mode);
+
+        posixPermissions = POSIXPermissions(uid, gid, mode);
+    }
+
+	template <typename ArchiveType>
+	void CustomArchive(ArchiveType& ar, const POSIXPermissions& posixPermissions)
+    {
+	    ar & Binding(u8"owner", posixPermissions.userId);
+        ar & Binding(u8"group", posixPermissions.groupId);
+        ar & Binding(u8"mode", posixPermissions.EncodeMode());
+    }
 }
 
 //Constructor
@@ -222,18 +245,6 @@ Map<Crypto::HashAlgorithm, String> BackupNodeIndex::DeserializeHashes(Serializat
 	return result;
 }
 
-void BackupNodeIndex::GenerateHashIndex()
-{
-	Crypto::HashAlgorithm hashAlgorithm = InjectionContainer::Instance().Get<ConfigManager>().Config().hashAlgorithm;
-
-	for(uint32 i = 0; i < this->GetNumberOfNodes(); i++)
-	{
-		const BackupNodeAttributes& attributes = this->GetNodeAttributes(i);
-		if(attributes.HashValues().Contains(hashAlgorithm))
-			this->hashIndex[attributes.Hash(hashAlgorithm)] = i;
-	}
-}
-
 void BackupNodeIndex::DeserializeNode(XmlDeserializer& xmlDeserializer)
 {
 	xmlDeserializer.EnterAttributes();
@@ -253,6 +264,8 @@ void BackupNodeIndex::DeserializeNode(XmlDeserializer& xmlDeserializer)
 		xmlDeserializer & Binding(c_tag_node_lastModified_name, lastModified);
 		lastModifiedTime = lastModified;
 	}
+
+	UniquePointer<NodePermissions> permissions = this->DeserializePermissions(xmlDeserializer);
 	
 	uint64 size = 0;
 	if(xmlDeserializer.HasChildElement(c_tag_node_size_name))
@@ -264,11 +277,49 @@ void BackupNodeIndex::DeserializeNode(XmlDeserializer& xmlDeserializer)
 	DynamicArray<Block> blocks = this->DeserializeBlocks(xmlDeserializer, ownsBlocks, compressionSetting, owner);
 	Map<Crypto::HashAlgorithm, String> hashes = this->DeserializeHashes(xmlDeserializer);
 
-	UniquePointer<BackupNodeAttributes> attributes = new BackupNodeAttributes(type, size, lastModifiedTime, Move(blocks), Move(hashes));
+	UniquePointer<BackupNodeAttributes> attributes = new BackupNodeAttributes(type, size, lastModifiedTime, Move(permissions), Move(blocks), Move(hashes));
 	attributes->OwnsBlocks(ownsBlocks);
 	attributes->CompressionSetting(compressionSetting);
 	attributes->BackReferenceTarget(owner);
 	this->AddNode(path, Move(attributes));
+}
+
+UniquePointer<NodePermissions> BackupNodeIndex::DeserializePermissions(XmlDeserializer &xmlDeserializer)
+{
+    xmlDeserializer.EnterElement(c_tag_node_permissions_name);
+    xmlDeserializer.EnterAttributes();
+    String type;
+    xmlDeserializer & Binding(c_tag_node_permissions_attribute_type_name, type);
+    xmlDeserializer.LeaveAttributes();
+
+    UniquePointer<NodePermissions> result;
+
+    if(type == c_tag_node_permissions_attribute_type_POSIX)
+    {
+        POSIXPermissions* posixPermissions = new POSIXPermissions(0, 0, 0);
+        CustomArchive(xmlDeserializer, *posixPermissions);
+        result = posixPermissions;
+    }
+    else
+    {
+        NOT_IMPLEMENTED_ERROR; //implement me
+    }
+
+    xmlDeserializer.LeaveElement();
+
+    return result;
+}
+
+void BackupNodeIndex::GenerateHashIndex()
+{
+    Crypto::HashAlgorithm hashAlgorithm = InjectionContainer::Instance().Get<ConfigManager>().Config().hashAlgorithm;
+
+    for(uint32 i = 0; i < this->GetNumberOfNodes(); i++)
+    {
+        const BackupNodeAttributes& attributes = this->GetNodeAttributes(i);
+        if(attributes.HashValues().Contains(hashAlgorithm))
+            this->hashIndex[attributes.Hash(hashAlgorithm)] = i;
+    }
 }
 
 void BackupNodeIndex::SerializeBlocks(Serialization::XmlSerializer& xmlSerializer, const DynamicArray<Block> &blocks, bool ownsBlocks, Optional<CompressionSetting>& compressionSetting, Optional<Path>& owner) const
@@ -320,6 +371,8 @@ void BackupNodeIndex::SerializeNode(XmlSerializer& xmlSerializer, const Path &pa
 		xmlSerializer & Binding(c_tag_node_lastModified_name, *attributes.LastModifiedTime());
 	}
 
+	this->SerializePermissions(xmlSerializer, attributes.Permissions());
+
 	uint64 size = attributes.Size();
 	if(attributes.Type() != NodeType::Directory)
 		xmlSerializer & Binding(c_tag_node_size_name, size);
@@ -330,4 +383,27 @@ void BackupNodeIndex::SerializeNode(XmlSerializer& xmlSerializer, const Path &pa
 	this->SerializeHashes(xmlSerializer, attributes.HashValues());
 
 	xmlSerializer.LeaveElement();
+}
+
+void BackupNodeIndex::SerializePermissions(Serialization::XmlSerializer& xmlSerializer, const NodePermissions &nodePermissions) const
+{
+    xmlSerializer.EnterElement(c_tag_node_permissions_name);
+
+    const POSIXPermissions* posixPermissions = dynamic_cast<const POSIXPermissions *>(&nodePermissions);
+
+    xmlSerializer.EnterAttributes();
+    if(posixPermissions)
+    {
+        xmlSerializer & Binding(c_tag_node_permissions_attribute_type_name, c_tag_node_permissions_attribute_type_POSIX);
+    }
+    else
+    {
+        NOT_IMPLEMENTED_ERROR; //implement me
+    }
+    xmlSerializer.LeaveAttributes();
+
+    if(posixPermissions)
+        CustomArchive(xmlSerializer, *posixPermissions);
+
+    xmlSerializer.LeaveElement();
 }

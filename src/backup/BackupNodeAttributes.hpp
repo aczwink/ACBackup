@@ -34,8 +34,8 @@ class BackupNodeAttributes : public FileSystemNodeAttributes
 {
 public:
 	//Constructors
-	inline BackupNodeAttributes(NodeType type, uint64 size, const Optional<DateTime>& lastModifiedTime, DynamicArray<Block>&& blocks, Map<Crypto::HashAlgorithm, String>&& hashes)
-		: FileSystemNodeAttributes(type, size, lastModifiedTime),
+	inline BackupNodeAttributes(NodeType type, uint64 size, const Optional<DateTime>& lastModifiedTime, UniquePointer<NodePermissions>&& permissions, DynamicArray<Block>&& blocks, Map<Crypto::HashAlgorithm, String>&& hashes)
+		: FileSystemNodeAttributes(type, size, lastModifiedTime, Move(permissions)),
 		blocks(Forward<DynamicArray<Block>>(blocks)), hashes(Forward<Map<Crypto::HashAlgorithm, String>>(hashes))
 	{
 	}

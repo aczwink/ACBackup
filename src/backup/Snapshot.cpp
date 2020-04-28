@@ -101,6 +101,8 @@ void Snapshot::BackupNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex
 	{
 		nodeInputStream = sourceIndex.OpenFile(filePath);
 		compressionRate = compressionStatistics.GetCompressionRate(ext);
+		if(fileAttributes.Size() == 0)
+		    compressionRate = 1; //don't compress empty files
 	}
 	else if(fileAttributes.Type() == NodeType::Link)
 	{
@@ -165,8 +167,7 @@ const Snapshot *Snapshot::FindDataSnapshot(uint32 nodeIndex, Path& nodePathInSna
 {
 	if(!this->index->HasNodeData(nodeIndex))
 	{
-		const BackupNodeAttributes& attributes = this->index->GetNodeAttributes(nodeIndex);
-
+        const BackupNodeAttributes& attributes = this->index->GetNodeAttributes(nodeIndex);
 		Path parentPath;
 		if(attributes.BackReferenceTarget().HasValue())
 			parentPath = *attributes.BackReferenceTarget();
@@ -193,11 +194,32 @@ void Snapshot::Restore(const Path &restorePoint) const
 
 	ProcessStatus& process = ic.Get<StatusTracker>().AddProcessStatusTracker(u8"Restoring snapshot: " + this->Name(),
 			this->Index().GetNumberOfNodes(), this->Index().ComputeTotalSize());
+
+	//all dirs in order first
+	for(const auto& kv : this->index->PathMap())
+    {
+	    uint32 i = this->index->GetNodeIndex(kv.key);
+        const BackupNodeAttributes& attributes = this->index->GetNodeAttributes(i);
+
+        Path nodeRestorePath = restorePoint.String() + kv.key.String();
+        if(nodeRestorePath.GetName().IsEmpty())
+            nodeRestorePath = nodeRestorePath.GetParent();
+
+        if(attributes.Type() == NodeType::Directory)
+        {
+            OSFileSystem::GetInstance().GetDirectory(nodeRestorePath.GetParent())->CreateSubDirectory(nodeRestorePath.GetName(), &attributes.Permissions());
+            process.IncFinishedCount();
+        }
+    }
+
 	for(uint32 i = 0; i < this->Index().GetNumberOfNodes(); i++)
 	{
 		threadPool.EnqueueTask([this, i, &restorePoint, &process]()
 		{
 			const BackupNodeAttributes& attributes = this->index->GetNodeAttributes(i);
+			if(attributes.Type() == NodeType::Directory)
+                return; //skip
+
 			const Path& filePath = this->Index().GetNodePath(i);
 			Path nodeRestorePath = restorePoint.String() + filePath.String();
 			if(nodeRestorePath.GetName().IsEmpty())
@@ -205,15 +227,12 @@ void Snapshot::Restore(const Path &restorePoint) const
 
 			switch(attributes.Type())
 			{
-				case NodeType::Directory:
-					OSFileSystem::GetInstance().GetDirectory(nodeRestorePath.GetParent())->CreateSubDirectory(nodeRestorePath.GetName());
-					break;
 				case NodeType::File:
 				{
 					Path realNodePath;
 					const Snapshot* snapshot = this->FindDataSnapshot(i, realNodePath);
 					UniquePointer<InputStream> input = snapshot->fileSystem->GetFile(realNodePath)->OpenForReading(true);
-					FileOutputStream output(nodeRestorePath);
+					FileOutputStream output(nodeRestorePath, false, &attributes.Permissions());
 
 					//write
 					uint64 flushedSize = input->FlushTo(output);

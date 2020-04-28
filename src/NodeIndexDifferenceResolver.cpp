@@ -130,7 +130,7 @@ void NodeIndexDifferenceResolver::ComputeNodeDifferences(NodeIndexDifferences& n
 			{
 				case NodeType::Directory:
 					nodeDifferencesLock.Lock();
-					nodeIndexDifferences.differentMetadata.Insert(index);
+					nodeIndexDifferences.differentData.Insert(index); //new node
 					nodeDifferencesLock.Unlock();
 					break;
 				case NodeType::File:
@@ -141,7 +141,7 @@ void NodeIndexDifferenceResolver::ComputeNodeDifferences(NodeIndexDifferences& n
 
 					nodeDifferencesLock.Lock();
 					if(leftNodeIndexByHash == Unsigned<uint32>::Max()) //could not find hash value
-						nodeIndexDifferences.differentData.Insert(index);
+						nodeIndexDifferences.differentData.Insert(index); //new node
 					else
 					{
 						const Path &filePath = rightIndex.GetNodePath(index);

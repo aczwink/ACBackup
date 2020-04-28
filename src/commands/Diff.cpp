@@ -51,6 +51,9 @@ static void Diff(const Snapshot& snapshot, const FileSystemNodeIndex& sourceInde
 
 		csvWriter << oldPath.String() << u8"node was moved" << newPath.String() << endl;
 	}
+
+	if(!differences.Exist())
+	    csvWriter << u8"No differences exist" << endl;
 }
 
 int32 CommandDiffSnapshotWithSourceDirectory(SnapshotManager& snapshotManager, const String& snapshotName)

@@ -38,7 +38,7 @@ FlatVolumesFileSystem::FlatVolumesFileSystem(const Path &dirPath, BackupNodeInde
 	BinaryTreeSet<uint64> volumes;
 	for(uint32 i = 0; i < index.GetNumberOfNodes(); i++)
 	{
-		BackupNodeAttributes& attributes = index.GetNodeAttributes(i);
+		const BackupNodeAttributes& attributes = index.GetNodeAttributes(i);
 		for(const Block& block : attributes.Blocks())
 			volumes.Insert(block.volumeNumber);
 	}
@@ -194,6 +194,7 @@ void FlatVolumesFileSystem::BytesWereWrittenToVolume(const VolumesOutputStream* 
 				it.Remove();
 			break;
 		}
+		++it;
 	}
 }
 
@@ -223,7 +224,7 @@ SeekableOutputStream &FlatVolumesFileSystem::FindStream(const OutputStream *writ
 
 	if(!this->writing.createdDataDir)
 	{
-		OSFileSystem::GetInstance().GetDirectory(this->dirPath.GetParent())->CreateSubDirectory(this->dirPath.GetName());
+		OSFileSystem::GetInstance().GetDirectory(this->dirPath.GetParent())->CreateSubDirectory(this->dirPath.GetName(),nullptr);
 		this->writing.createdDataDir = true;
 	}
 

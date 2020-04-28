@@ -60,4 +60,15 @@ namespace StdXX::Serialization
 	{
 		ar & Binding(name, StringMapping(hashAlgorithm, HashMapping()));
 	}
+
+
+	//clang needs this :(
+    inline XmlSerializer& operator<<(XmlSerializer& serializer, const Binding<CompressionSetting>& binding)
+    {
+        return operator<<<XmlSerializer>(serializer, binding);
+    }
+    inline XmlDeserializer& operator>>(XmlDeserializer& deserializer, const Binding<CompressionSetting>& binding)
+    {
+        return operator>><XmlDeserializer>(deserializer, binding);
+    }
 }

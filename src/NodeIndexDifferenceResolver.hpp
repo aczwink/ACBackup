@@ -43,6 +43,12 @@ struct NodeIndexDifferences
 	BinaryTreeSet<uint32> differentData; //implies also that metadata is different
 	BinaryTreeSet<uint32> differentMetadata;
 	Map<uint32, uint32> moved; //maps right index to left index
+
+	//Inline
+	inline bool Exist() const
+    {
+	    return !(deleted.IsEmpty() and differentData.IsEmpty() and differentMetadata.IsEmpty() and moved.IsEmpty());
+    }
 };
 
 class NodeIndexDifferenceResolver

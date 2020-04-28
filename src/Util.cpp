@@ -19,14 +19,27 @@
 //Corresponding header
 #include "Util.hpp"
 
+UniquePointer<NodePermissions> Clone(const NodePermissions& permissions)
+{
+    const POSIXPermissions* posixPermissions = dynamic_cast<const POSIXPermissions *>(&permissions);
+    if(posixPermissions)
+    {
+        return new POSIXPermissions(*posixPermissions);
+    }
+    else
+    {
+        NOT_IMPLEMENTED_ERROR; //implement me
+    }
+}
+
 void UnprotectFile(const Path& filePath)
 {
 	AutoPointer<Node> node = OSFileSystem::GetInstance().GetNode(filePath);
 	NodeInfo nodeInfo = node->QueryInfo();
 
-	if(nodeInfo.permissions.IsInstanceOf<UnixPermissions>())
+	if(nodeInfo.permissions.IsInstanceOf<POSIXPermissions>())
 	{
-		UnixPermissions& permissions = dynamic_cast<UnixPermissions &>(*nodeInfo.permissions);
+        POSIXPermissions& permissions = dynamic_cast<POSIXPermissions &>(*nodeInfo.permissions);
 
 		permissions.owner.write = true;
 
@@ -43,9 +56,9 @@ void WriteProtectFile(const Path& filePath)
 	AutoPointer<Node> node = OSFileSystem::GetInstance().GetNode(filePath);
 	NodeInfo nodeInfo = node->QueryInfo();
 
-	if(nodeInfo.permissions.IsInstanceOf<UnixPermissions>())
+	if(nodeInfo.permissions.IsInstanceOf<POSIXPermissions>())
 	{
-		UnixPermissions& permissions = dynamic_cast<UnixPermissions &>(*nodeInfo.permissions);
+        POSIXPermissions& permissions = dynamic_cast<POSIXPermissions &>(*nodeInfo.permissions);
 
 		permissions.others.write = false;
 		permissions.group.write = false;

@@ -31,6 +31,28 @@ struct AutoInjectionClearer
 	}
 };
 
+static bool TryInstantiateCompressorAndHashers()
+{
+    const Config& config = InjectionContainer::Instance().Get<ConfigManager>().Config();
+
+    NullOutputStream nullOutputStream;
+    UniquePointer<Compressor> compressor = Compressor::Create(config.compressionStreamFormatType, config.compressionAlgorithm, nullOutputStream);
+    if(compressor.IsNull())
+    {
+        stdErr << u8"Could not create compressor." << endl;
+        return false;
+    }
+
+    UniquePointer<Crypto::HashFunction> hasher = Crypto::HashFunction::CreateInstance(config.hashAlgorithm);
+    if(hasher.IsNull())
+    {
+        stdErr << u8"Could not create hasher." << endl;
+        return false;
+    }
+
+    return true;
+}
+
 int32 Main(const String& programName, const FixedArray<String>& args)
 {
 	AutoInjectionClearer autoInjectionClearer;
@@ -128,6 +150,9 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 	ConfigManager configManager;
 	ic.Register(configManager);
 
+	if(!TryInstantiateCompressorAndHashers())
+	    return EXIT_FAILURE;
+
 	UniquePointer<StatusTracker> statusTracker = StatusTracker::CreateInstance(configManager.Config().statusTrackerType);
 	ic.Register(*statusTracker);
 
@@ -190,6 +215,8 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 	else if(matchResult.IsActivated(restoreSnapshot))
 	{
 		snapshot->Restore(restorePoint.Value(matchResult));
+		stdOut << u8"Backup restoration successful" << endl;
+
 		return EXIT_SUCCESS;
 	}
 	else if(matchResult.IsActivated(stats))

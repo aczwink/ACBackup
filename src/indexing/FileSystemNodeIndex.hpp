@@ -38,9 +38,17 @@ public:
 	uint64 ComputeTotalSize() const;
 	uint64 ComputeTotalSize(const BinaryTreeSet<uint32>& nodeIndices) const;
 
+	//Properties
+	inline const BijectiveMap<Path, uint32> PathMap() const
+    {
+	    return this->pathMap;
+    }
+
 	//Inline
 	inline uint32 AddNode(const Path& path, UniquePointer<FileSystemNodeAttributes>&& attributes)
 	{
+	    AutoLock lock(this->lock);
+
 		uint32 index = this->nodeAttributes.Push(Move(attributes));
 		this->pathMap.Insert(path.IsAbsolute() ? path : u8"/" + path.String(), index);
 		return index;
@@ -48,11 +56,14 @@ public:
 
 	inline const FileSystemNodeAttributes& GetNodeAttributes(uint32 index) const
 	{
+        AutoLock lock(this->lock);
+
 		return *this->nodeAttributes[index];
 	}
 
 	inline uint32 GetNodeIndex(const Path& path) const
 	{
+        AutoLock lock(this->lock);
 		return this->pathMap.Get(path);
 	}
 
@@ -72,10 +83,11 @@ public:
 	}
 
 protected:
-	//Members
-	DynamicArray<UniquePointer<FileSystemNodeAttributes>> nodeAttributes;
+    //Members
+    mutable Mutex lock;
 
 private:
 	//Members
+	DynamicArray<UniquePointer<FileSystemNodeAttributes>> nodeAttributes;
 	BijectiveMap<Path, uint32> pathMap;
 };
