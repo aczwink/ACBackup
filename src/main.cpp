@@ -232,7 +232,7 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 	}
 	else if(matchResult.IsActivated(verifyAll))
 	{
-		return CommandVerifyAllSnapshots();
+		return CommandVerifyAllSnapshots(snapshotManager);
 	}
 
 	stdErr << commandLineParser.GetErrorText() << endl;

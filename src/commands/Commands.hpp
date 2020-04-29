@@ -24,11 +24,11 @@ using namespace StdXX::FileSystem;
 
 //Prototypes
 int32 CommandAddSnapshot(SnapshotManager& snapshotManager);
-int32 CommandDiffSnapshots(SnapshotManager& snapshotManager, const String& snapshotName, const String& otherSnapshotName);
-int32 CommandDiffSnapshotWithSourceDirectory(SnapshotManager& snapshotManager, const String& snapshotName);
+int32 CommandDiffSnapshots(const SnapshotManager& snapshotManager, const String& snapshotName, const String& otherSnapshotName);
+int32 CommandDiffSnapshotWithSourceDirectory(const SnapshotManager& snapshotManager, const String& snapshotName);
 int32 CommandInit(const Path& sourcePath);
 int32 CommandOutputSnapshotHashValues(const Snapshot& snapshot);
 int32 CommandOutputSnapshotHashValues(const Snapshot& snapshot, const String& hashAlgorithm);
 int32 CommandOutputSnapshotStats(const Snapshot& snapshot);
-int32 CommandVerifyAllSnapshots();
-int32 CommandVerifySnapshot(SnapshotManager& snapshotManager, const Snapshot& snapshot, bool full);
+int32 CommandVerifyAllSnapshots(const SnapshotManager& snapshotManager);
+int32 CommandVerifySnapshot(const SnapshotManager& snapshotManager, const Snapshot& snapshot, bool full);

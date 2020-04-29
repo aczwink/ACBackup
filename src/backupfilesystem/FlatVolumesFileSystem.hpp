@@ -29,9 +29,10 @@ class VolumesOutputStream;
 
 class FlatVolumesFileSystem : public RWFileSystem
 {
-	struct OpenVolumeForReading
+	struct VolumeForReading
 	{
 		UniquePointer<FileInputStream> file;
+		uint64 counter = 0;
 		Mutex mutex;
 	};
 
@@ -55,11 +56,20 @@ public:
 	AutoPointer<Node> GetNode(const Path &path) override;
 	AutoPointer<const Node> GetNode(const Path &path) const override;
 	void Move(const Path &from, const Path &to) override;
+	UniquePointer<InputStream> OpenFileForReading(uint32 fileIndex, bool verify) const;
 	UniquePointer<InputStream> OpenLinkTargetAsStream(const Path& linkPath, bool verify) const;
 	uint32 ReadBytes(const FlatVolumesBlockInputStream& reader, void *destination, uint64 volumeNumber, uint64 offset, uint32 count) const;
 	void WriteBytes(const VolumesOutputStream& writer, const void* source, uint32 size);
 	void WriteProtect();
 	SpaceInfo QuerySpace() const override;
+
+	//Inline
+	inline void DecrementVolumeCount(uint64 volumeNumber) const
+	{
+		VolumeForReading& volume = this->reading.volumes->operator[](volumeNumber);
+		AutoLock lock(volume.mutex);
+		volume.counter--;
+	}
 
 private:
 	//Members
@@ -68,7 +78,9 @@ private:
 	struct
 	{
 		BinaryTreeSet<Path> directories;
-		mutable UniquePointer<FixedArray<OpenVolumeForReading>> openVolumes;
+		mutable UniquePointer<FixedArray<VolumeForReading>> volumes;
+		mutable Atomic<uint16> nOpenVolumes;
+		mutable Mutex nOpenVolumesLock;
 	} reading;
 	struct
 	{
@@ -80,12 +92,14 @@ private:
 
 	//Methods
 	void BytesWereWrittenToVolume(const VolumesOutputStream* writer, uint64 offset, uint32 nBytesWritten);
+	void CloseUnusedVolumes() const;
 	SeekableOutputStream& FindStream(const OutputStream* writer, uint64& leftSize);
+	void IncrementVolumeCounters(const DynamicArray<Block>& blocks) const;
 	SeekableInputStream& LockVolumeStream(uint64 volumeNumber) const;
 
 	//Inline
 	inline void UnlockVolumeStream(uint64 volumeNumber) const
 	{
-		(*this->reading.openVolumes)[volumeNumber].mutex.Unlock();
+		(*this->reading.volumes)[volumeNumber].mutex.Unlock();
 	}
 };

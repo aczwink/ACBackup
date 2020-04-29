@@ -26,6 +26,7 @@
 #include "FlatVolumesFile.hpp"
 #include "FlatVolumesDirectory.hpp"
 #include "FlatVolumesLink.hpp"
+#include "FlatVolumesBlockInputStream.hpp"
 
 //Constructor
 FlatVolumesFileSystem::FlatVolumesFileSystem(const Path &dirPath, BackupNodeIndex& index)
@@ -43,7 +44,8 @@ FlatVolumesFileSystem::FlatVolumesFileSystem(const Path &dirPath, BackupNodeInde
 			volumes.Insert(block.volumeNumber);
 	}
 
-	this->reading.openVolumes = new FixedArray<OpenVolumeForReading>(volumes.GetNumberOfElements());
+	this->reading.volumes = new FixedArray<VolumeForReading>(volumes.GetNumberOfElements());
+	this->reading.nOpenVolumes = 0;
 }
 
 //Public methods
@@ -113,16 +115,47 @@ void FlatVolumesFileSystem::Move(const Path &from, const Path &to)
 	NOT_IMPLEMENTED_ERROR; //implement me
 }
 
+UniquePointer<InputStream> FlatVolumesFileSystem::OpenFileForReading(uint32 fileIndex, bool verify) const
+{
+	const BackupNodeAttributes& attributes = this->index.GetNodeAttributes(fileIndex);
+	this->IncrementVolumeCounters(attributes.Blocks());
+
+	UniquePointer<InputStream> blockInputStream = new FlatVolumesBlockInputStream(*this, attributes.Blocks());
+
+	ChainedInputStream* chain = new ChainedInputStream(StdXX::Move(blockInputStream));
+
+	const Config &config = InjectionContainer::Instance().Get<ConfigManager>().Config();
+
+	chain->Add( new BufferedInputStream(chain->GetEnd()) );
+
+	if(attributes.CompressionSetting().HasValue())
+	{
+		CompressionSettings compressionSettings;
+		ConfigManager::GetCompressionSettings(*attributes.CompressionSetting(), compressionSettings);
+		chain->Add(Decompressor::Create(compressionSettings.compressionStreamFormatType, chain->GetEnd(), verify));
+	}
+
+	if(verify)
+	{
+		Crypto::HashAlgorithm hashAlgorithm = config.hashAlgorithm;
+		String expected = attributes.Hash(hashAlgorithm);
+		chain->Add(new Crypto::CheckedHashingInputStream(chain->GetEnd(), hashAlgorithm, expected));
+	}
+
+	return chain;
+}
+
 UniquePointer<InputStream> FlatVolumesFileSystem::OpenLinkTargetAsStream(const Path& linkPath, bool verify) const
 {
 	uint32 nodeIndex = this->index.GetNodeIndex(linkPath);
 
-	FlatVolumesFile file(nodeIndex, this->index, const_cast<FlatVolumesFileSystem&>(*this));
-	return file.OpenForReading(verify);
+	return this->OpenFileForReading(nodeIndex, verify);
 }
 
 uint32 FlatVolumesFileSystem::ReadBytes(const FlatVolumesBlockInputStream &reader, void *destination, uint64 volumeNumber, uint64 offset, uint32 count) const
 {
+	this->CloseUnusedVolumes();
+
 	uint8* dest = static_cast<uint8 *>(destination);
 	while(count)
 	{
@@ -198,6 +231,24 @@ void FlatVolumesFileSystem::BytesWereWrittenToVolume(const VolumesOutputStream* 
 	}
 }
 
+void FlatVolumesFileSystem::CloseUnusedVolumes() const
+{
+	AutoLock lock(this->reading.nOpenVolumesLock);
+
+	if(this->reading.nOpenVolumes > 100)
+	{
+		for(auto& volume : *this->reading.volumes)
+		{
+			AutoLock volumeLock(volume.mutex);
+			if( (volume.counter == 0) and !volume.file.IsNull())
+			{
+				volume.file = nullptr;
+				this->reading.nOpenVolumes--;
+			}
+		}
+	}
+}
+
 SeekableOutputStream &FlatVolumesFileSystem::FindStream(const OutputStream *writer, uint64 &leftSize)
 {
 	AutoLock lock(this->writing.openVolumesMutex);
@@ -242,13 +293,27 @@ SeekableOutputStream &FlatVolumesFileSystem::FindStream(const OutputStream *writ
 	return result;
 }
 
+void FlatVolumesFileSystem::IncrementVolumeCounters(const DynamicArray<Block> &blocks) const
+{
+	for(const Block& b : blocks)
+	{
+		VolumeForReading& volume = this->reading.volumes->operator[](b.volumeNumber);
+
+		AutoLock lock(volume.mutex);
+		volume.counter++;
+	}
+}
+
 SeekableInputStream &FlatVolumesFileSystem::LockVolumeStream(uint64 volumeNumber) const
 {
-	OpenVolumeForReading &volume = (*this->reading.openVolumes)[volumeNumber];
+	VolumeForReading &volume = (*this->reading.volumes)[volumeNumber];
 	volume.mutex.Lock();
 
 	if(volume.file.IsNull())
+	{
 		volume.file = new FileInputStream(this->dirPath / String::Number(volumeNumber));
+		this->reading.nOpenVolumes++;
+	}
 
 	return *volume.file;
 }

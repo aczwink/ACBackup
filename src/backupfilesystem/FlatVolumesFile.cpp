@@ -21,31 +21,11 @@
 //Local
 #include "FlatVolumesBlockInputStream.hpp"
 #include "../InjectionContainer.hpp"
-#include "../config/ConfigManager.hpp"
 
 //Public methods
 UniquePointer<InputStream> FlatVolumesFile::OpenForReading(bool verify) const
 {
-	UniquePointer<InputStream> blockInputStream = new FlatVolumesBlockInputStream(this->fileSystem, this->attributes.Blocks());
-	ChainedInputStream* chain = new ChainedInputStream(Move(blockInputStream));
-	chain->Add( new BufferedInputStream(chain->GetEnd()) );
-
-	if(this->attributes.CompressionSetting().HasValue())
-	{
-		CompressionSettings compressionSettings;
-		ConfigManager::GetCompressionSettings(*this->attributes.CompressionSetting(), compressionSettings);
-		chain->Add(Decompressor::Create(compressionSettings.compressionStreamFormatType, chain->GetEnd(), verify));
-	}
-
-	if(verify)
-	{
-		const Config &config = InjectionContainer::Instance().Get<ConfigManager>().Config();
-		Crypto::HashAlgorithm hashAlgorithm = config.hashAlgorithm;
-		String expected = this->attributes.Hash(hashAlgorithm);
-		chain->Add(new Crypto::CheckedHashingInputStream(chain->GetEnd(), hashAlgorithm, expected));
-	}
-
-	return chain;
+	return this->fileSystem.OpenFileForReading(this->fileIndex, verify);
 }
 
 UniquePointer<OutputStream> FlatVolumesFile::OpenForWriting()

@@ -56,7 +56,7 @@ static void Diff(const Snapshot& snapshot, const FileSystemNodeIndex& sourceInde
 	    csvWriter << u8"No differences exist" << endl;
 }
 
-int32 CommandDiffSnapshotWithSourceDirectory(SnapshotManager& snapshotManager, const String& snapshotName)
+int32 CommandDiffSnapshotWithSourceDirectory(const SnapshotManager& snapshotManager, const String& snapshotName)
 {
 	const Snapshot* snapshot = snapshotManager.FindSnapshot(snapshotName);
 	if(!snapshot)
@@ -70,7 +70,7 @@ int32 CommandDiffSnapshotWithSourceDirectory(SnapshotManager& snapshotManager, c
 	return EXIT_SUCCESS;
 }
 
-int32 CommandDiffSnapshots(SnapshotManager& snapshotManager, const String& snapshotName, const String& otherSnapshotName)
+int32 CommandDiffSnapshots(const SnapshotManager& snapshotManager, const String& snapshotName, const String& otherSnapshotName)
 {
 	const Snapshot* snapshot1 = snapshotManager.FindSnapshot(snapshotName);
 	if(!snapshot1)

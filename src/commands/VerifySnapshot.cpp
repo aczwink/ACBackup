@@ -40,20 +40,8 @@ static bool Verify(const SnapshotManager& snapshotManager, const Snapshot &snaps
 	return false;
 }
 
-int32 CommandVerifyAllSnapshots()
+int32 CommandVerifyAllSnapshots(const SnapshotManager& snapshotManager)
 {
-	InjectionContainer &ic = InjectionContainer::Instance();
-
-	ConfigManager configManager;
-	ic.Register(configManager);
-
-	UniquePointer<StatusTracker> statusTracker = StatusTracker::CreateInstance(configManager.Config().statusTrackerType);
-	ic.Register(*statusTracker);
-
-	StaticThreadPool threadPool;
-	ic.Register(threadPool);
-
-	SnapshotManager snapshotManager;
 	DynamicArray<String> snapshotsWithCorruption;
 	for(const auto& snapshot : snapshotManager.Snapshots())
 	{
@@ -74,7 +62,7 @@ int32 CommandVerifyAllSnapshots()
 	return EXIT_SUCCESS;
 }
 
-int32 CommandVerifySnapshot(SnapshotManager& snapshotManager, const Snapshot& snapshot, bool full)
+int32 CommandVerifySnapshot(const SnapshotManager& snapshotManager, const Snapshot& snapshot, bool full)
 {
 	Verify(snapshotManager, snapshot, full);
 

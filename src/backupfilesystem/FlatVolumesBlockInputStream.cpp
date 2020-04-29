@@ -41,6 +41,7 @@ uint32 FlatVolumesBlockInputStream::ReadBytes(void *destination, uint32 count)
 	{
 		if(this->blockOffset >= this->blocks[this->currentBlockIndex].size)
 		{
+			this->fileSystem.DecrementVolumeCount(this->blocks[this->currentBlockIndex].volumeNumber);
 			this->currentBlockIndex++;
 			if(this->IsAtEnd())
 				break;
