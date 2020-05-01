@@ -32,7 +32,7 @@ u8R"(
             //Protected methods
             _RenderContent()
             {
-                return new VElement("div", { style: { display: "flex", justifyContent: "space-evenly" } },
+                return new VElement("div", { style: { display: "flex", justifyContent: "space-evenly", flexWrap: "wrap" } },
                     ...this.state.processes.map(p =>
                         new VElement("div", { className: "box", style: { flexDirection: "column" } },
                             new Heading(4, { textContent: p.title }),

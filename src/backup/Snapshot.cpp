@@ -24,6 +24,7 @@
 #include "VirtualSnapshotFilesystem.hpp"
 #include "../config/CompressionStatistics.hpp"
 #include "../StreamPipingFailedException.hpp"
+#include "../status/StatusTrackingOutputStream.hpp"
 
 struct HashAlgorithmAndValue
 {
@@ -132,7 +133,9 @@ void Snapshot::BackupNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex
 		attributes->CompressionSetting(configManager.CompressionSetting());
 	}
 
-	uint64 readSize = hashingInputStream.FlushTo(*outputStream);
+	StatusTrackingOutputStream statusTrackingOutputStream(*outputStream, processStatus);
+
+	uint64 readSize = hashingInputStream.FlushTo(statusTrackingOutputStream);
 	if(readSize != sourceIndex.GetNodeAttributes(index).Size())
 		throw StreamPipingFailedException(filePath);
 	if(!compressor.IsNull())
@@ -148,8 +151,6 @@ void Snapshot::BackupNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex
 	UniquePointer<Crypto::HashFunction> hasher = hashingInputStream.Reset();
 	hasher->Finish();
 	attributes->AddHashValue(config.hashAlgorithm, hasher->GetDigestString().ToLowercase());
-
-	processStatus.AddFinishedSize(fileAttributes.Size());
 }
 
 void Snapshot::BackupNodeMetadata(uint32 index, const BackupNodeAttributes& oldAttributes, const OSFileSystemNodeIndex &sourceIndex)

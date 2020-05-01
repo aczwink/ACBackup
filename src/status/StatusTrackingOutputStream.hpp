@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -19,20 +19,23 @@
 #include <StdXX.hpp>
 using namespace StdXX;
 //Local
-#include "../indexing/OSFileSystemNodeIndex.hpp"
-#include "../status/StatusTracker.hpp"
-#include "../backup/SnapshotManager.hpp"
-#include "../config/CompressionStatistics.hpp"
+#include "ProcessStatus.hpp"
 
-int32 CommandAddSnapshot(SnapshotManager& snapshotManager)
+class StatusTrackingOutputStream : public OutputStream
 {
-	InjectionContainer& ic = InjectionContainer::Instance();
+public:
+	//Constructor
+	inline StatusTrackingOutputStream(OutputStream& outputStream, ProcessStatus& processStatus)
+		: outputStream(outputStream), processStatus(processStatus)
+	{
+	}
 
-	OSFileSystemNodeIndex sourceIndex(ic.Get<ConfigManager>().Config().sourcePath);
-	if(snapshotManager.AddSnapshot(sourceIndex))
-		stdOut << u8"Snapshot creation successful." << endl;
-	else
-		stdOut << u8"Snapshot creation failed. The snapshot is corrupt." << endl;
+	//Methods
+	void Flush() override;
+	uint32 WriteBytes(const void *source, uint32 size) override;
 
-	return EXIT_SUCCESS;
-}
+private:
+	//Members
+	OutputStream& outputStream;
+	ProcessStatus& processStatus;
+};
