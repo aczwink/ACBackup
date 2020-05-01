@@ -53,8 +53,11 @@ JsonValue ProcessStatus::ToJSON() const
 	obj[u8"doneSize"] = this->doneSize;
 	obj[u8"startTime"] = this->startTime.ToISOString();
 	obj[u8"duration_millisecs"] = duration_microsecs / 1000;
-	if(this->isEndDeterminate)
+
+	if( this->isEndDeterminate and (this->totalSize > 0) )
 		obj[u8"progress"] = this->doneSize / float64(this->totalSize);
+	else if(this->isEndDeterminate and (this->nFiles > 0) )
+		obj[u8"progress"] = this->nFinishedFiles / float64(this->nFiles);
 	else
 		obj[u8"progress"] = this->endTime.HasValue();
 

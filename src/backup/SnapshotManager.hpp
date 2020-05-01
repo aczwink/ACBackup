@@ -37,7 +37,7 @@ public:
 	}
 
 	//Methods
-	void AddSnapshot(const OSFileSystemNodeIndex& sourceIndex);
+	bool AddSnapshot(const OSFileSystemNodeIndex& sourceIndex);
 	DynamicArray<uint32> VerifySnapshot(const Snapshot& snapshot, bool full) const;
 
 	//Inline

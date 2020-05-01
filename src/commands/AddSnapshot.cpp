@@ -29,7 +29,10 @@ int32 CommandAddSnapshot(SnapshotManager& snapshotManager)
 	InjectionContainer& ic = InjectionContainer::Instance();
 
 	OSFileSystemNodeIndex sourceIndex(ic.Get<ConfigManager>().Config().sourcePath);
-	snapshotManager.AddSnapshot(sourceIndex);
+	if(snapshotManager.AddSnapshot(sourceIndex))
+		stdOut << u8"Snapshot creating successful." << endl;
+	else
+		stdOut << u8"Snapshot creation failed. The snapshot is corrupt." << endl;
 
 	return EXIT_SUCCESS;
 }

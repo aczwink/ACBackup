@@ -30,7 +30,7 @@ SnapshotManager::SnapshotManager()
 }
 
 //Public methods
-void SnapshotManager::AddSnapshot(const OSFileSystemNodeIndex& sourceIndex)
+bool SnapshotManager::AddSnapshot(const OSFileSystemNodeIndex& sourceIndex)
 {
 	InjectionContainer& ic = InjectionContainer::Instance();
 
@@ -90,7 +90,9 @@ void SnapshotManager::AddSnapshot(const OSFileSystemNodeIndex& sourceIndex)
 
 	this->EnsureNoDifferenceExists(sourceIndex);
 
-	this->VerifySnapshot(*this->snapshots.Last(), true); //verify full snapshot to make sure older required snapshots not have gone corrupt
+	DynamicArray<uint32> results = this->VerifySnapshot(*this->snapshots.Last(), true); //verify full snapshot to make sure older required snapshots not have gone corrupt
+	
+	return results.IsEmpty();
 }
 
 DynamicArray<uint32> SnapshotManager::VerifySnapshot(const Snapshot &snapshot, bool full) const

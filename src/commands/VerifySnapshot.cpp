@@ -20,9 +20,8 @@
 #include "Commands.hpp"
 #include "../backup/SnapshotManager.hpp"
 
-static bool Verify(const SnapshotManager& snapshotManager, const Snapshot &snapshot, bool full)
+bool OutputVerificationResults(const DynamicArray<uint32> failedNodes, const Snapshot &snapshot)
 {
-	DynamicArray<uint32> failedNodes = snapshotManager.VerifySnapshot(snapshot, full);
 	if(failedNodes.IsEmpty())
 	{
 		stdOut << u8"Snapshot '" << snapshot.Name() << u8"' successfully verified!" << endl;
@@ -38,6 +37,12 @@ static bool Verify(const SnapshotManager& snapshotManager, const Snapshot &snaps
 	stdOut << u8"IMPORTANT: These files are also corrupt in all subsequent snapshots until a newer version was backed up." << endl;
 
 	return false;
+}
+
+static bool Verify(const SnapshotManager& snapshotManager, const Snapshot &snapshot, bool full)
+{
+	DynamicArray<uint32> failedNodes = snapshotManager.VerifySnapshot(snapshot, full);
+	return OutputVerificationResults(failedNodes, snapshot);
 }
 
 int32 CommandVerifyAllSnapshots(const SnapshotManager& snapshotManager)
