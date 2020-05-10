@@ -21,8 +21,9 @@
 #include "../backup/SnapshotManager.hpp"
 #include "../Serialization.hpp"
 #include "../StreamPipingFailedException.hpp"
+#include "../status/StatusTrackingOutputStream.hpp"
 
-static String GenerateHashValue(uint32 i, const BackupNodeIndex& index, Crypto::HashAlgorithm hashAlgorithm, const Snapshot& snapshot)
+static String GenerateHashValue(uint32 i, const BackupNodeIndex& index, Crypto::HashAlgorithm hashAlgorithm, const Snapshot& snapshot, ProcessStatus& processStatus)
 {
 	const BackupNodeAttributes& attributes = index.GetNodeAttributes(i);
 
@@ -40,7 +41,9 @@ static String GenerateHashValue(uint32 i, const BackupNodeIndex& index, Crypto::
 	NullOutputStream nullOutputStream;
 	Crypto::HashingOutputStream hashingOutputStream(nullOutputStream, hashAlgorithm);
 
-	uint64 readSize = input->FlushTo(hashingOutputStream);
+    StatusTrackingOutputStream statusTrackingOutputStream(hashingOutputStream, processStatus);
+
+	uint64 readSize = input->FlushTo(statusTrackingOutputStream);
 	if(readSize != attributes.Size())
 		throw StreamPipingFailedException(realNodePath);
 
@@ -70,14 +73,12 @@ static int32 OutputSnapshotHashValues(const Snapshot& snapshot, Crypto::HashAlgo
 
 		threadPool.EnqueueTask([&csvWriter, &csvWriterMutex, &index, i, hashAlgorithm, &snapshot, &process]()
 		{
-			String hash = GenerateHashValue(i, index, hashAlgorithm, snapshot);
+			String hash = GenerateHashValue(i, index, hashAlgorithm, snapshot, process);
 
 			csvWriterMutex.Lock();
 			csvWriter << index.GetNodePath(i).String() << hash << endl;
 			csvWriterMutex.Unlock();
 
-			const BackupNodeAttributes& attributes = index.GetNodeAttributes(i);
-			process.AddFinishedSize(attributes.Size());
 			process.IncFinishedCount();
 		});
 	}

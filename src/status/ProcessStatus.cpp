@@ -25,13 +25,12 @@ using namespace StdXX::CommonFileFormats;
 Optional <DateTime> ProcessStatus::ComputeExpectedEndTime() const
 {
 	uint64 duration_microsecs = this->GetDurationInMicroseconds();
-	if(this->isEndDeterminate && (duration_microsecs > 0))
+	if(this->isEndDeterminate && (duration_microsecs > 0) && (this->speed > 0))
 	{
-		uint64 leftSize = this->totalSize - this->doneSize;
-		float64 speed = this->doneSize / (duration_microsecs / 1000.0);
+        const uint64 passed = duration_microsecs / 1000;
 
-		uint64 passed = duration_microsecs / 1000;
-		uint64 leftTime = static_cast<uint64>(leftSize / speed);
+		const uint64 leftSize = this->totalSize - this->doneSize;
+		const uint64 leftTime = static_cast<uint64>(leftSize / (this->speed / 1000.0));
 
 		return this->startTime.AddMilliSeconds(passed + leftTime);
 	}
@@ -53,6 +52,7 @@ JsonValue ProcessStatus::ToJSON() const
 	obj[u8"doneSize"] = this->doneSize;
 	obj[u8"startTime"] = this->startTime.ToISOString();
 	obj[u8"duration_millisecs"] = duration_microsecs / 1000;
+	obj[u8"speed"] = this->speed;
 
 	if( this->isEndDeterminate and (this->totalSize > 0) )
 		obj[u8"progress"] = this->doneSize / float64(this->totalSize);

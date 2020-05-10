@@ -59,6 +59,8 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 
 	Parser commandLineParser(programName);
 	commandLineParser.AddHelpOption();
+	OptionWithArgument workers(u8'w', u8"workers", u8"Specify number of worker threads to use. If not specified, there are as many workers as CPU cores are available on the hardware. A lower value can help with traditional HDDs that have bad random access speed");
+    commandLineParser.AddOption(workers);
 
 	OptionWithArgument snapshotName(u8's', u8"snapshot-name", u8"Use another snapshot than the newest one as source");
 
@@ -145,6 +147,13 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 	if(matchResult.IsActivated(init))
 		return CommandInit(sourceDirectory.Value(matchResult));
 
+	uint32 nWorkers = GetHardwareConcurrency();
+	if(matchResult.IsActivated(workers))
+    {
+	    String value = workers.Value(matchResult);
+	    nWorkers = value.ToUInt32();
+    }
+
 	InjectionContainer &ic = InjectionContainer::Instance();
 
 	ConfigManager configManager;
@@ -156,7 +165,7 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 	UniquePointer<StatusTracker> statusTracker = StatusTracker::CreateInstance(configManager.Config().statusTrackerType);
 	ic.Register(*statusTracker);
 
-	StaticThreadPool threadPool;
+	StaticThreadPool threadPool(nWorkers);
 	ic.Register(threadPool);
 
 	SnapshotManager snapshotManager;

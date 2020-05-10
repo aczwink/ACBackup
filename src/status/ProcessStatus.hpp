@@ -33,7 +33,7 @@ public:
 		this->doneSize = 0;
 		this->totalSize = 0;
 
-		this->clock.Start();
+		this->totalClock.Start();
 	}
 
 	inline ProcessStatus(const String& title, uint32 nFiles, uint64 totalSize)
@@ -42,8 +42,11 @@ public:
 		this->isEndDeterminate = true;
 		this->nFinishedFiles = 0;
 		this->doneSize = 0;
+		this->lastDoneSize = 0;
+		this->speed = 0;
 
-		this->clock.Start();
+        this->speedClock.Start();
+		this->totalClock.Start();
 	}
 
 	//Methods
@@ -66,6 +69,17 @@ public:
 		return this->isEndDeterminate;
 	}
 
+	inline void MeasureSpeedSample()
+    {
+        const uint64 deltaDoneSize = this->doneSize - this->lastDoneSize;
+        const uint64 elapsed = this->speedClock.GetElapsedMicroseconds();
+        const float64 elapsedSeconds = elapsed / 1000.0 / 1000.0;
+        this->speed = elapsed ? (deltaDoneSize / elapsedSeconds) : 0;
+        this->lastDoneSize = this->doneSize;
+
+        this->speedClock.Start();
+    }
+
 	inline uint32 NumberOfFiles() const
 	{
 		return this->nFiles;
@@ -75,6 +89,11 @@ public:
 	{
 		return this->nFinishedFiles;
 	}
+
+	inline uint64 Speed() const
+    {
+	    return this->speed;
+    }
 
 	inline const DateTime& StartTime() const
 	{
@@ -105,7 +124,7 @@ public:
 
 	inline String ComputeExpectedEndTimeAsString() const
 	{
-		if(this->isEndDeterminate && (this->GetDurationInMicroseconds() > 0))
+		if(this->isEndDeterminate && (this->speed > 0))
 			return this->ComputeExpectedEndTime()->ToISOString();
 		return u8"???";
 	}
@@ -114,7 +133,7 @@ public:
 	{
 		AutoLock lock(this->mutex);
 		this->endTime = DateTime::Now();
-		this->totalTaskDuration = this->clock.GetElapsedMicroseconds();
+		this->totalTaskDuration = this->totalClock.GetElapsedMicroseconds();
 	}
 
 	inline uint64 GetDurationInMicroseconds() const
@@ -122,7 +141,7 @@ public:
 		if(this->endTime.HasValue())
 			return this->totalTaskDuration;
 
-		return this->clock.GetElapsedMicroseconds();
+		return this->totalClock.GetElapsedMicroseconds();
 	}
 
 	inline void IncFileCount()
@@ -154,6 +173,9 @@ private:
 	uint64 doneSize;
 	Optional<DateTime> endTime;
 	uint64 totalTaskDuration;
-	Clock clock;
+	Clock totalClock;
+    uint64 speed;
+    Clock speedClock;
+    uint64 lastDoneSize;
 	mutable Mutex mutex;
 };

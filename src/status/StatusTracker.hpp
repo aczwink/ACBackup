@@ -55,7 +55,7 @@ public:
 
 protected:
 	//Properties
-	inline auto& Processes() const
+	inline DynamicArray<UniquePointer<ProcessStatus>>& Processes()
 	{
 		return this->processes;
 	}
@@ -66,12 +66,12 @@ protected:
 		this->processesLock.Lock();
 	}
 
-	inline auto GetProcessesBegin() const
+	inline auto GetProcessesBegin()
 	{
 		return this->processes.begin();
 	}
 
-	inline auto GetProcessesEnd() const
+	inline auto GetProcessesEnd()
 	{
 		return this->processes.end();
 	}

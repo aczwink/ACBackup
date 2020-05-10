@@ -38,8 +38,8 @@ void TerminalStatusTracker::PrintKnownEndTask(const ProcessStatus &processStatus
 {
 	stdOut << u8"Finished files: " << processStatus.NumberOfFinishedFiles() << u8" of " << processStatus.NumberOfFiles() << endl
 		<< u8"Finished size: " << String::FormatBinaryPrefixed(processStatus.DoneSize()) << u8" of " << String::FormatBinaryPrefixed(processStatus.TotalSize()) << endl
-		<< u8"Speed: " << String::FormatBinaryPrefixed(processStatus.DoneSize() / (processStatus.GetDurationInMicroseconds() / 1000.0 / 1000.0)) << u8"/s" << endl
-		<< u8"Progress: " << uint64(processStatus.DoneSize() * 100.0 / processStatus.TotalSize()) << u8"%" << endl;
+		<< u8"Speed: " << String::FormatBinaryPrefixed(processStatus.Speed()) << u8"/s" << endl
+		<< u8"Progress: " << processStatus.DoneSize() * 100 / processStatus.TotalSize() << u8"%" << endl;
 }
 
 void TerminalStatusTracker::PrintUnknownEndTask(const ProcessStatus &processStatus)
@@ -53,18 +53,22 @@ int32 TerminalStatusTracker::ThreadMain()
 	while(this->running)
 	{
 		this->AcquireProcesses();
-		const auto& processes = this->Processes();
+		auto& processes = this->Processes();
 		if(currentStep < processes.GetNumberOfElements())
 		{
-			const ProcessStatus& processStatus = *processes[currentStep];
+			ProcessStatus& processStatus = *processes[currentStep];
 
 			Optional<DateTime> expectedEndTime = processStatus.ComputeExpectedEndTime();
 			stdOut << processStatus.Title() << endl
 				<< u8"Process started on: " << processStatus.StartTime().ToISOString() << endl
 				<< (processStatus.EndTime().HasValue() ? u8"Process ended on" : u8"Expected end time") << u8": " << (processStatus.EndTime().HasValue() ? processStatus.EndTime()->ToISOString() : processStatus.ComputeExpectedEndTimeAsString()) << endl
 				<< u8"Total duration: " << processStatus.GetDurationInMicroseconds() / 1000 / 1000 << u8" s" << endl;
+
 			if(processStatus.IsEndDeterminate())
-				this->PrintKnownEndTask(processStatus);
+            {
+                processStatus.MeasureSpeedSample();
+			    this->PrintKnownEndTask(processStatus);
+            }
 			else
 				this->PrintUnknownEndTask(processStatus);
 

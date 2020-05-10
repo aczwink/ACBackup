@@ -39,6 +39,7 @@ void StatusTrackerWebService::OnGETRequest(const Path& requestPath, const HTTPHe
 		auto it = this->statusTracker.GetProcessesBegin();
 		while(it != this->statusTracker.GetProcessesEnd())
 		{
+		    (*it)->MeasureSpeedSample();
 			json.Push((*it)->ToJSON());
 			++it;
 		}
