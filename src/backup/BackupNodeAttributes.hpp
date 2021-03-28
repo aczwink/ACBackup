@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -34,7 +34,7 @@ class BackupNodeAttributes : public FileSystemNodeAttributes
 {
 public:
 	//Constructors
-	inline BackupNodeAttributes(NodeType type, uint64 size, const Optional<DateTime>& lastModifiedTime, UniquePointer<NodePermissions>&& permissions, DynamicArray<Block>&& blocks, Map<Crypto::HashAlgorithm, String>&& hashes)
+	inline BackupNodeAttributes(FileType type, uint64 size, const Optional<DateTime>& lastModifiedTime, UniquePointer<FileSystem::Permissions>&& permissions, DynamicArray<Block>&& blocks, Map<Crypto::HashAlgorithm, String>&& hashes)
 		: FileSystemNodeAttributes(type, size, lastModifiedTime, Move(permissions)),
 		blocks(Forward<DynamicArray<Block>>(blocks)), hashes(Forward<Map<Crypto::HashAlgorithm, String>>(hashes))
 	{

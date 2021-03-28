@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -27,7 +27,7 @@ class FileSystemNodeAttributes
 {
 public:
 	//Constructors
-	inline FileSystemNodeAttributes(NodeType type, uint64 size, const Optional<DateTime>& lastModifiedTime, UniquePointer<NodePermissions>&& permissions)
+	inline FileSystemNodeAttributes(FileType type, uint64 size, const Optional<DateTime>& lastModifiedTime, UniquePointer<Permissions>&& permissions)
 	{
 		this->type = type;
 		this->size = size;
@@ -35,23 +35,17 @@ public:
         this->permissions = Move(permissions);
 	}
 
-	inline FileSystemNodeAttributes(const AutoPointer<const Directory>& directory)
+	inline FileSystemNodeAttributes(const FileInfo& fileInfo)
 	{
-		this->type = NodeType::Directory;
-		this->Init(directory);
-		this->size = 0;
-	}
+		this->type = fileInfo.type;
+		if(fileInfo.lastModifiedTime.HasValue())
+			this->lastModifiedTime = fileInfo.lastModifiedTime;
+		this->permissions = fileInfo.permissions->Clone();
 
-	inline FileSystemNodeAttributes(const AutoPointer<const File>& file)
-	{
-		this->type = NodeType::File;
-		this->Init(file);
-	}
-
-	inline FileSystemNodeAttributes(const AutoPointer<const Link>& link)
-	{
-		this->type = NodeType::Link;
-		this->Init(link);
+		if(fileInfo.type == FileType::Directory)
+			this->size = 0;
+		else
+			this->size = fileInfo.size;
 	}
 
 	inline FileSystemNodeAttributes(const FileSystemNodeAttributes& attributes)
@@ -68,7 +62,7 @@ public:
 		return this->lastModifiedTime;
 	}
 
-	inline const NodePermissions& Permissions() const
+	inline const FileSystem::Permissions& Permissions() const
     {
 	    return *this->permissions;
     }
@@ -78,7 +72,7 @@ public:
 		return this->size;
 	}
 
-	inline NodeType Type() const
+	inline FileType Type() const
 	{
 		return this->type;
 	}
@@ -88,7 +82,7 @@ public:
     {
         this->type = attributes.type;
         this->size = attributes.size;
-        this->permissions = Clone(*attributes.permissions);
+        this->permissions = attributes.permissions->Clone();
         this->lastModifiedTime = attributes.lastModifiedTime;
 
         return *this;
@@ -115,20 +109,8 @@ public:
 
 private:
 	//Members
-	NodeType type;
+	FileType type;
 	uint64 size;
-	UniquePointer<NodePermissions> permissions;
+	UniquePointer<FileSystem::Permissions> permissions;
 	Optional<DateTime> lastModifiedTime;
-
-	//Inline
-    //template <typename Type::EnableIf_t<Type::IsMoveAssignable_v<DateTime>, bool> = false>
-	inline void Init(const AutoPointer<const Node>& node)
-	{
-		NodeInfo info = node->QueryInfo();
-
-		this->size = info.size;
-		if(info.lastModifiedTime.HasValue())
-			this->lastModifiedTime = info.lastModifiedTime;
-		this->permissions = Move(info.permissions);
-	}
 };

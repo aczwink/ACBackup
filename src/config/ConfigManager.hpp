@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -59,7 +59,7 @@ private:
 	//Inline
 	inline void SetPathsInConfig()
 	{
-		this->config.backupPath = OSFileSystem::GetInstance().GetWorkingDirectory();
+		this->config.backupPath = FileSystemsManager::Instance().OSFileSystem().GetWorkingDirectory();
 		this->config.dataPath = this->config.backupPath / String(u8"data");
 		this->config.indexPath = this->config.backupPath / String(u8"index");
 	}

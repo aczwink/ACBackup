@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -65,8 +65,8 @@ static void AddIncompressibleFileExtensions(CompressionStatistics& compressionSt
 
 static bool IsDirectoryEmpty(const Path& dirPath)
 {
-    auto dir = OSFileSystem::GetInstance().GetDirectory(dirPath);
-    return dir->IsEmpty();
+	File dir(dirPath);
+	return dir.IsEmptyDirectory();
 }
 
 int32 CommandInit(const Path& sourcePath)
@@ -89,9 +89,11 @@ int32 CommandInit(const Path& sourcePath)
     compressionStatistics.Write(backupPath);
 
     //create dirs
-	auto dir = OSFileSystem::GetInstance().GetDirectory(backupPath);
-	OSFileSystem::GetInstance().CreateDirectoryTree(c.Config().dataPath);
-	OSFileSystem::GetInstance().CreateDirectoryTree(c.Config().indexPath);
+	File dataDir(c.Config().dataPath);
+	dataDir.CreateDirectories();
+
+	File indexDir(c.Config().indexPath);
+	indexDir.CreateDirectories();
 
     return EXIT_SUCCESS;
 }

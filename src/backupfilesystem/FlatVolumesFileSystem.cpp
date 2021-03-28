@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -72,21 +72,9 @@ void FlatVolumesFileSystem::CreateLink(const Path &linkPath, const Path &linkTar
 	NOT_IMPLEMENTED_ERROR; //implement me
 }
 
-bool FlatVolumesFileSystem::Exists(const Path &path) const
-{
-	NOT_IMPLEMENTED_ERROR; //implement me
-	return false;
-}
-
 void FlatVolumesFileSystem::Flush()
 {
 	NOT_IMPLEMENTED_ERROR; //implement me
-}
-
-AutoPointer<Node> FlatVolumesFileSystem::GetNode(const Path &path)
-{
-	NOT_IMPLEMENTED_ERROR; //implement me
-	return AutoPointer<Node>();
 }
 
 AutoPointer<const Node> FlatVolumesFileSystem::GetNode(const Path &path) const
@@ -180,7 +168,7 @@ void FlatVolumesFileSystem::WriteBytes(const VolumesOutputStream& writer, const 
 		SeekableOutputStream& outputStream = this->FindStream(&writer, leftSize);
 
 		uint32 bytesToWrite = Math::Min( (uint32)leftSize, (uint32)size );
-		uint64 offset = outputStream.GetCurrentOffset();
+		uint64 offset = outputStream.QueryCurrentOffset();
 		uint32 nBytesWritten = outputStream.WriteBytes(src, bytesToWrite);
 
 		src += nBytesWritten;
@@ -193,10 +181,11 @@ void FlatVolumesFileSystem::WriteProtect()
 {
 	this->writing.openVolumes.Release(); //close open files
 
-	if(!OSFileSystem::GetInstance().Exists(this->dirPath))
+	File dir(this->dirPath);
+
+	if(!dir.Exists())
 		return;
-	auto dir = OSFileSystem::GetInstance().GetDirectory(this->dirPath);
-	auto dirWalker = dir->WalkFiles();
+	auto dirWalker = dir.WalkFiles();
 
 	for(const Path& relPath : dirWalker)
 	{
@@ -275,7 +264,8 @@ SeekableOutputStream &FlatVolumesFileSystem::FindStream(const OutputStream *writ
 
 	if(!this->writing.createdDataDir)
 	{
-		OSFileSystem::GetInstance().GetDirectory(this->dirPath.GetParent())->CreateSubDirectory(this->dirPath.GetName(),nullptr);
+		File dir(this->dirPath);
+		dir.CreateDirectory();
 		this->writing.createdDataDir = true;
 	}
 

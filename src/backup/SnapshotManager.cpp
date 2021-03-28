@@ -166,8 +166,8 @@ NodeIndexDifferences SnapshotManager::ComputeDifference(const OSFileSystemNodeIn
 DynamicArray<Path> SnapshotManager::ListPathsInIndexDirectory()
 {
 	const Path& indexPath = InjectionContainer::Instance().Get<ConfigManager>().Config().indexPath;
-	auto dir = OSFileSystem::GetInstance().GetDirectory(indexPath);
-	auto dirWalker = dir->WalkFiles();
+	File dir(indexPath);
+	auto dirWalker = dir.WalkFiles();
 
 	DynamicArray<Path> snapshotFiles;
 	for(const Path& relPath : dirWalker)

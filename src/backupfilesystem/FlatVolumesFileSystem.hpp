@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -51,10 +51,7 @@ public:
 	void CloseFile(const VolumesOutputStream& writer);
 	UniquePointer<OutputStream> CreateFile(const Path &filePath) override;
 	void CreateLink(const Path &linkPath, const Path &linkTargetPath) override;
-	bool Exists(const Path &path) const override;
 	void Flush() override;
-	AutoPointer<Node> GetNode(const Path &path) override;
-	AutoPointer<const Node> GetNode(const Path &path) const override;
 	void Move(const Path &from, const Path &to) override;
 	UniquePointer<InputStream> OpenFileForReading(uint32 fileIndex, bool verify) const;
 	UniquePointer<InputStream> OpenLinkTargetAsStream(const Path& linkPath, bool verify) const;

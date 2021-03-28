@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -142,7 +142,7 @@ void Snapshot::BackupNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex
 		compressor->Finalize();
 	outputStream->Flush();
 
-	if(!compressor.IsNull() && (fileAttributes.Type() == NodeType::File))
+	if(!compressor.IsNull() && (fileAttributes.Type() == FileType::File))
 	{
 		compressionRate = attributes->ComputeSumOfBlockSizes() / (float32)attributes->Size();
 		compressionStatistics.AddCompressionRateSample(ext, compressionRate);
@@ -206,7 +206,7 @@ void Snapshot::Restore(const Path &restorePoint) const
         if(nodeRestorePath.GetName().IsEmpty())
             nodeRestorePath = nodeRestorePath.GetParent();
 
-        if(attributes.Type() == NodeType::Directory)
+        if(attributes.Type() == FileType::Directory)
         {
             OSFileSystem::GetInstance().GetDirectory(nodeRestorePath.GetParent())->CreateSubDirectory(nodeRestorePath.GetName(), &attributes.Permissions());
             process.IncFinishedCount();
@@ -218,7 +218,7 @@ void Snapshot::Restore(const Path &restorePoint) const
 		threadPool.EnqueueTask([this, i, &restorePoint, &process]()
 		{
 			const BackupNodeAttributes& attributes = this->index->GetNodeAttributes(i);
-			if(attributes.Type() == NodeType::Directory)
+			if(attributes.Type() == FileType::Directory)
                 return; //skip
 
 			const Path& filePath = this->Index().GetNodePath(i);
@@ -228,7 +228,7 @@ void Snapshot::Restore(const Path &restorePoint) const
 
 			switch(attributes.Type())
 			{
-				case NodeType::File:
+				case FileType::File:
 				{
 					Path realNodePath;
 					const Snapshot* snapshot = this->FindDataSnapshot(i, realNodePath);
@@ -243,13 +243,14 @@ void Snapshot::Restore(const Path &restorePoint) const
 					process.AddFinishedSize(flushedSize);
 				}
 				break;
-				case NodeType::Link:
+				case FileType::Link:
 				{
 					Path realNodePath;
 					const Snapshot* snapshot = this->FindDataSnapshot(i, realNodePath);
-					Path target = snapshot->fileSystem->GetNode(realNodePath).Cast<const Link>()->ReadTarget();
+					Optional<Path> target = snapshot->fileSystem->ReadLinkTarget(realNodePath);
 
-					OSFileSystem::GetInstance().CreateLink(nodeRestorePath, target);
+					File link(nodeRestorePath);
+					link.CreateLink(target.Value());
 
 					process.AddFinishedSize(attributes.Size());
 				}
@@ -301,10 +302,10 @@ bool Snapshot::VerifyNode(const Path& path) const
 	//just read the file in once with verification
 	UniquePointer<InputStream> input;
 
-	if(attributes.Type() == NodeType::Link)
+	if(attributes.Type() == FileType::Link)
 		input = this->fileSystem->OpenLinkTargetAsStream(path, true);
 	else
-		input = this->fileSystem->GetFile(path)->OpenForReading(true);
+		input = this->fileSystem->OpenFileForReading(nodeIndex, true);
 	NullOutputStream nullOutputStream;
 	try
 	{
@@ -340,14 +341,14 @@ UniquePointer<Snapshot> Snapshot::Deserialize(const Path &path)
 		FileInputStream fileInputStream(path);
 		BufferedInputStream bufferedInputStream(fileInputStream);
 		UniquePointer<Decompressor> decompressor = Decompressor::Create(CompressionStreamFormatType::lzma, bufferedInputStream, false);
-		Crypto::HashingInputStream hashingInputStream(*decompressor, protection.hashAlgorithm);
+		UniquePointer<Crypto::HashFunction> hashFunction = Crypto::HashFunction::CreateInstance(protection.hashAlgorithm);
+		Crypto::HashingInputStream hashingInputStream(*decompressor, hashFunction.operator->());
 
 		Serialization::XmlDeserializer deserializer(hashingInputStream);
 
 		Path name(title); //strip of .xml
 		UniquePointer<Snapshot> snapshot = new Snapshot(name.GetTitle(), deserializer);
 
-		UniquePointer<Crypto::HashFunction> hashFunction = hashingInputStream.Reset();
 		hashFunction->Finish();
 		String got = hashFunction->GetDigestString().ToLowercase();
 

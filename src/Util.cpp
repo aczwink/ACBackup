@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -18,19 +18,6 @@
  */
 //Corresponding header
 #include "Util.hpp"
-
-UniquePointer<NodePermissions> Clone(const NodePermissions& permissions)
-{
-    const POSIXPermissions* posixPermissions = dynamic_cast<const POSIXPermissions *>(&permissions);
-    if(posixPermissions)
-    {
-        return new POSIXPermissions(*posixPermissions);
-    }
-    else
-    {
-        NOT_IMPLEMENTED_ERROR; //implement me
-    }
-}
 
 void UnprotectFile(const Path& filePath)
 {

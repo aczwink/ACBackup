@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -41,8 +41,8 @@ private:
 
 	//Methods
 	void GenerateIndex();
-	void IndexDirectoryChildren(AutoPointer<const Directory> dir, const Path& path, ProcessStatus& findStatus);
-	void IndexNode(AutoPointer<const Node> node, const Path& nodePath, ProcessStatus& findStatus);
+	void IndexDirectoryChildren(const Path& path, ProcessStatus& findStatus);
+	void IndexNode(const Path& nodePath, ProcessStatus& findStatus);
 
 	//Inline
 	inline Path MapNodePathToFileSystemPath(const Path &nodePath) const

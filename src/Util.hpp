@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -20,6 +20,5 @@
 using namespace StdXX;
 using namespace StdXX::FileSystem;
 
-UniquePointer<NodePermissions> Clone(const NodePermissions& permissions);
 void UnprotectFile(const Path& filePath);
 void WriteProtectFile(const Path& filePath);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -85,12 +85,12 @@ namespace StdXX::Serialization
 	}
 
 	template <typename ArchiveType>
-	void CustomArchive(ArchiveType& ar, const String& name, NodeType& fileSystemNodeType)
+	void CustomArchive(ArchiveType& ar, const String& name, FileType& fileSystemNodeType)
 	{
-		StaticArray<Tuple<NodeType, String>, 3> fileSystemNodeTypeMapping = { {
-			{ NodeType::Directory, u8"directory"},
-			{ NodeType::File, u8"file"},
-			{ NodeType::Link, u8"link"},
+		StaticArray<Tuple<FileType, String>, 3> fileSystemNodeTypeMapping = { {
+			{ FileType::Directory, u8"directory"},
+			{ FileType::File, u8"file"},
+			{ FileType::Link, u8"link"},
 
 		} };
 		ar & Binding(name, StringMapping(fileSystemNodeType, fileSystemNodeTypeMapping));
@@ -155,11 +155,11 @@ uint32 BackupNodeIndex::FindNodeIndexByHash(const String& hash) const
 	return Unsigned<uint32>::Max();
 }
 
-NodeInfo BackupNodeIndex::GetFileSystemNodeInfo(uint32 nodeIndex) const
+FileInfo BackupNodeIndex::GetFileSystemNodeInfo(uint32 nodeIndex) const
 {
 	const BackupNodeAttributes& attributes = this->GetNodeAttributes(nodeIndex);
 
-	NodeInfo fileSystemNodeInfo;
+	FileInfo fileSystemNodeInfo;
 	fileSystemNodeInfo.size = attributes.Size();
 	fileSystemNodeInfo.storedSize = attributes.ComputeSumOfBlockSizes();
 	fileSystemNodeInfo.lastModifiedTime = attributes.LastModifiedTime();
@@ -249,7 +249,7 @@ void BackupNodeIndex::DeserializeNode(XmlDeserializer& xmlDeserializer)
 {
 	xmlDeserializer.EnterAttributes();
 
-	NodeType type;
+	FileType type;
 	CustomArchive(xmlDeserializer, c_tag_node_attribute_type_name, type);
 
 	xmlDeserializer.LeaveAttributes();
@@ -265,7 +265,7 @@ void BackupNodeIndex::DeserializeNode(XmlDeserializer& xmlDeserializer)
 		lastModifiedTime = lastModified;
 	}
 
-	UniquePointer<NodePermissions> permissions = this->DeserializePermissions(xmlDeserializer);
+	UniquePointer<Permissions> permissions = this->DeserializePermissions(xmlDeserializer);
 	
 	uint64 size = 0;
 	if(xmlDeserializer.HasChildElement(c_tag_node_size_name))
@@ -284,7 +284,7 @@ void BackupNodeIndex::DeserializeNode(XmlDeserializer& xmlDeserializer)
 	this->AddNode(path, Move(attributes));
 }
 
-UniquePointer<NodePermissions> BackupNodeIndex::DeserializePermissions(XmlDeserializer &xmlDeserializer)
+UniquePointer<Permissions> BackupNodeIndex::DeserializePermissions(XmlDeserializer &xmlDeserializer)
 {
     xmlDeserializer.EnterElement(c_tag_node_permissions_name);
     xmlDeserializer.EnterAttributes();
@@ -292,7 +292,7 @@ UniquePointer<NodePermissions> BackupNodeIndex::DeserializePermissions(XmlDeseri
     xmlDeserializer & Binding(c_tag_node_permissions_attribute_type_name, type);
     xmlDeserializer.LeaveAttributes();
 
-    UniquePointer<NodePermissions> result;
+    UniquePointer<Permissions> result;
 
     if(type == c_tag_node_permissions_attribute_type_POSIX)
     {
@@ -360,7 +360,7 @@ void BackupNodeIndex::SerializeNode(XmlSerializer& xmlSerializer, const Path &pa
 	xmlSerializer.EnterElement(c_tag_node_name);
 
 	xmlSerializer.EnterAttributes();
-	NodeType type = attributes.Type();
+	FileType type = attributes.Type();
 	CustomArchive(xmlSerializer, c_tag_node_attribute_type_name, type);
 	xmlSerializer.LeaveAttributes();
 
@@ -374,7 +374,7 @@ void BackupNodeIndex::SerializeNode(XmlSerializer& xmlSerializer, const Path &pa
 	this->SerializePermissions(xmlSerializer, attributes.Permissions());
 
 	uint64 size = attributes.Size();
-	if(attributes.Type() != NodeType::Directory)
+	if(attributes.Type() != FileType::Directory)
 		xmlSerializer & Binding(c_tag_node_size_name, size);
 
 	Optional<CompressionSetting> compressionSetting = attributes.CompressionSetting();
@@ -385,7 +385,7 @@ void BackupNodeIndex::SerializeNode(XmlSerializer& xmlSerializer, const Path &pa
 	xmlSerializer.LeaveElement();
 }
 
-void BackupNodeIndex::SerializePermissions(Serialization::XmlSerializer& xmlSerializer, const NodePermissions &nodePermissions) const
+void BackupNodeIndex::SerializePermissions(Serialization::XmlSerializer& xmlSerializer, const Permissions &nodePermissions) const
 {
     xmlSerializer.EnterElement(c_tag_node_permissions_name);
 
