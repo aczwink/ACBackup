@@ -21,8 +21,8 @@
 
 void UnprotectFile(const Path& filePath)
 {
-	AutoPointer<Node> node = OSFileSystem::GetInstance().GetNode(filePath);
-	NodeInfo nodeInfo = node->QueryInfo();
+	File file(filePath);
+	FileInfo nodeInfo = file.Info();
 
 	if(nodeInfo.permissions.IsInstanceOf<POSIXPermissions>())
 	{
@@ -30,7 +30,7 @@ void UnprotectFile(const Path& filePath)
 
 		permissions.owner.write = true;
 
-		node->ChangePermissions(permissions);
+		file.ChangePermissions(permissions);
 	}
 	else
 	{
@@ -40,8 +40,8 @@ void UnprotectFile(const Path& filePath)
 
 void WriteProtectFile(const Path& filePath)
 {
-	AutoPointer<Node> node = OSFileSystem::GetInstance().GetNode(filePath);
-	NodeInfo nodeInfo = node->QueryInfo();
+	File file(filePath);
+	FileInfo nodeInfo = file.Info();
 
 	if(nodeInfo.permissions.IsInstanceOf<POSIXPermissions>())
 	{
@@ -51,7 +51,7 @@ void WriteProtectFile(const Path& filePath)
 		permissions.group.write = false;
 		permissions.owner.write = false;
 
-		node->ChangePermissions(permissions);
+		file.ChangePermissions(permissions);
 	}
 	else
 	{

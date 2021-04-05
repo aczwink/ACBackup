@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -112,7 +112,7 @@ DynamicArray<uint32> SnapshotManager::VerifySnapshot(const Snapshot &snapshot, b
 		threadPool.EnqueueTask([&snapshot, i, full, &index, &process, &failedNodes, &failedFilesLock]()
 		{
 			const BackupNodeAttributes &nodeAttributes = snapshot.Index().GetNodeAttributes(i);
-			if(nodeAttributes.Type() == NodeType::Directory)
+			if(nodeAttributes.Type() == FileType::Directory)
 				return;
 			Path realNodePath;
 			const Snapshot* dataSnapshot = snapshot.FindDataSnapshot(i, realNodePath);

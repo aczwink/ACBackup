@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -20,7 +20,7 @@
 //Local
 #include "../backup/BackupNodeIndex.hpp"
 
-class FlatVolumesDirectory : public Directory
+/*class FlatVolumesDirectory : public Directory
 {
 public:
 	//Constructor
@@ -48,4 +48,4 @@ private:
 	//Members
 	uint32 directoryIndex;
 	const BackupNodeIndex& index;
-};
+};*/

@@ -98,14 +98,14 @@ void Snapshot::BackupNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex
 
 	UniquePointer<InputStream> nodeInputStream;
 	float32 compressionRate;
-	if(fileAttributes.Type() == NodeType::File)
+	if(fileAttributes.Type() == FileType::File)
 	{
 		nodeInputStream = sourceIndex.OpenFile(filePath);
 		compressionRate = compressionStatistics.GetCompressionRate(ext);
 		if(fileAttributes.Size() == 0)
 		    compressionRate = 1; //don't compress empty files
 	}
-	else if(fileAttributes.Type() == NodeType::Link)
+	else if(fileAttributes.Type() == FileType::Link)
 	{
 		nodeInputStream = sourceIndex.OpenLinkTargetAsStream(filePath);
 		if(fileAttributes.Size() > 100)
@@ -117,7 +117,8 @@ void Snapshot::BackupNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex
 	{
 		return;
 	}
-	Crypto::HashingInputStream hashingInputStream(*nodeInputStream, config.hashAlgorithm);
+	UniquePointer<Crypto::HashFunction> hasher = Crypto::HashFunction::CreateInstance(config.hashAlgorithm);
+	Crypto::HashingInputStream hashingInputStream(*nodeInputStream, hasher.operator->());
 
 	UniquePointer<OutputStream> fileOutputStream = this->fileSystem->CreateFile(filePath);
 	BufferedOutputStream blockBuffer(*fileOutputStream, config.blockSize);
@@ -148,7 +149,6 @@ void Snapshot::BackupNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex
 		compressionStatistics.AddCompressionRateSample(ext, compressionRate);
 	}
 
-	UniquePointer<Crypto::HashFunction> hasher = hashingInputStream.Reset();
 	hasher->Finish();
 	attributes->AddHashValue(config.hashAlgorithm, hasher->GetDigestString().ToLowercase());
 }
@@ -184,7 +184,7 @@ const Snapshot *Snapshot::FindDataSnapshot(uint32 nodeIndex, Path& nodePathInSna
 void Snapshot::Mount(const Path& mountPoint) const
 {
 	VirtualSnapshotFilesystem vsf(*this);
-	OSFileSystem::GetInstance().MountReadOnly(mountPoint, vsf);
+	FileSystemsManager::Instance().OSFileSystem().MountReadOnly(mountPoint, vsf);
 }
 
 void Snapshot::Restore(const Path &restorePoint) const
@@ -208,7 +208,7 @@ void Snapshot::Restore(const Path &restorePoint) const
 
         if(attributes.Type() == FileType::Directory)
         {
-            OSFileSystem::GetInstance().GetDirectory(nodeRestorePath.GetParent())->CreateSubDirectory(nodeRestorePath.GetName(), &attributes.Permissions());
+        	FileSystemsManager::Instance().OSFileSystem().CreateDirectory(nodeRestorePath, &attributes.Permissions());
             process.IncFinishedCount();
         }
     }
@@ -232,7 +232,7 @@ void Snapshot::Restore(const Path &restorePoint) const
 				{
 					Path realNodePath;
 					const Snapshot* snapshot = this->FindDataSnapshot(i, realNodePath);
-					UniquePointer<InputStream> input = snapshot->fileSystem->GetFile(realNodePath)->OpenForReading(true);
+					UniquePointer<InputStream> input = snapshot->fileSystem->OpenFileForReading(snapshot->Index().GetNodeIndex(realNodePath), true);
 					FileOutputStream output(nodeRestorePath, false, &attributes.Permissions());
 
 					//write

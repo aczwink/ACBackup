@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -128,13 +128,13 @@ void NodeIndexDifferenceResolver::ComputeNodeDifferences(NodeIndexDifferences& n
 			const FileSystemNodeAttributes &attributes = rightIndex.GetNodeAttributes(index);
 			switch(attributes.Type())
 			{
-				case NodeType::Directory:
+				case FileType::Directory:
 					nodeDifferencesLock.Lock();
 					nodeIndexDifferences.differentData.Insert(index); //new node
 					nodeDifferencesLock.Unlock();
 					break;
-				case NodeType::File:
-				case NodeType::Link:
+				case FileType::File:
+				case FileType::Link:
 				{
 					String hash = this->RetrieveNodeHash(index, rightIndex);
 					uint32 leftNodeIndexByHash = leftIndex.FindNodeIndexByHash(hash);

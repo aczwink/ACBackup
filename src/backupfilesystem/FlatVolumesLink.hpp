@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -22,7 +22,7 @@ using namespace StdXX;
 #include "../backup/BackupNodeIndex.hpp"
 #include "FlatVolumesFileSystem.hpp"
 
-class FlatVolumesLink : public Link
+/*class FlatVolumesLink : public Link
 {
 public:
 	//Constructor
@@ -41,4 +41,4 @@ private:
 	uint32 nodeIndex;
 	const BackupNodeIndex& index;
 	const FlatVolumesFileSystem &fileSystem;
-};
+};*/

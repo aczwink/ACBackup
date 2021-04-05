@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -20,13 +20,7 @@
 #include "VirtualSnapshotFilesystem.hpp"
 
 //Public methods
-bool VirtualSnapshotFilesystem::Exists(const Path &path) const
-{
-	NOT_IMPLEMENTED_ERROR; //implement me
-	return false;
-}
-
-AutoPointer<const Node> VirtualSnapshotFilesystem::GetNode(const Path &path) const
+/*AutoPointer<const Node> VirtualSnapshotFilesystem::GetNode(const Path &path) const
 {
 	if(!this->snapshot.Index().HasNodeIndex(path))
 		return nullptr;
@@ -41,10 +35,37 @@ AutoPointer<const Node> VirtualSnapshotFilesystem::GetNode(const Path &path) con
 		dataSnapshot = this->snapshot.FindDataSnapshot(nodeIndex, realNodePath);
 
 	return dataSnapshot->Filesystem().GetNode(realNodePath);
-}
+}*/
 
 SpaceInfo VirtualSnapshotFilesystem::QuerySpace() const
 {
 	NOT_IMPLEMENTED_ERROR; //implement me
 	return SpaceInfo();
 }
+
+
+//TODO: NOT IMPLEMENTED
+UniquePointer<DirectoryEnumerator> VirtualSnapshotFilesystem::EnumerateChildren(const Path &path) const
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	return UniquePointer<DirectoryEnumerator>();
+}
+
+UniquePointer<InputStream> VirtualSnapshotFilesystem::OpenFileForReading(const Path &path, bool verify) const
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	return UniquePointer<InputStream>();
+}
+
+Optional<FileInfo> VirtualSnapshotFilesystem::QueryFileInfo(const Path &path) const
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	return Optional<FileInfo>();
+}
+
+Optional<Path> VirtualSnapshotFilesystem::ReadLinkTarget(const Path &path) const
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	return Optional<Path>();
+}
+//TODO: NOT IMPLEMENTED

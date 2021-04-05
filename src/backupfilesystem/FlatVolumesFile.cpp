@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -22,7 +22,7 @@
 #include "FlatVolumesBlockInputStream.hpp"
 #include "../InjectionContainer.hpp"
 
-//Public methods
+/*//Public methods
 UniquePointer<InputStream> FlatVolumesFile::OpenForReading(bool verify) const
 {
 	return this->fileSystem.OpenFileForReading(this->fileIndex, verify);
@@ -34,12 +34,12 @@ UniquePointer<OutputStream> FlatVolumesFile::OpenForWriting()
 	return UniquePointer<OutputStream>();
 }
 
-void FlatVolumesFile::ChangePermissions(const NodePermissions &newPermissions)
+void FlatVolumesFile::ChangePermissions(const FileSystem::Permissions &newPermissions)
 {
 	NOT_IMPLEMENTED_ERROR; //implement me
 }
 
-NodeInfo FlatVolumesFile::QueryInfo() const
+FileInfo FlatVolumesFile::QueryInfo() const
 {
 	return this->index.GetFileSystemNodeInfo(this->fileIndex);
-}
+}*/

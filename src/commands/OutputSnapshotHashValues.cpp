@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -34,10 +34,10 @@ static String GenerateHashValue(uint32 i, const BackupNodeIndex& index, Crypto::
 	const Snapshot* dataSnapshot = snapshot.FindDataSnapshot(i, realNodePath);
 
 	UniquePointer<InputStream> input;
-	if(attributes.Type() == NodeType::Link)
+	if(attributes.Type() == FileType::Link)
 		input = dataSnapshot->Filesystem().OpenLinkTargetAsStream(realNodePath, false);
 	else
-		input = dataSnapshot->Filesystem().GetFile(realNodePath)->OpenForReading(false);
+		input = dataSnapshot->Filesystem().OpenFileForReading(realNodePath, false);
 	NullOutputStream nullOutputStream;
 	Crypto::HashingOutputStream hashingOutputStream(nullOutputStream, hashAlgorithm);
 
@@ -68,7 +68,7 @@ static int32 OutputSnapshotHashValues(const Snapshot& snapshot, Crypto::HashAlgo
 	for(uint32 i = 0; i < index.GetNumberOfNodes(); i++)
 	{
 		const BackupNodeAttributes& attributes = index.GetNodeAttributes(i);
-		if(attributes.Type() == NodeType::Directory)
+		if(attributes.Type() == FileType::Directory)
 			continue;
 
 		threadPool.EnqueueTask([&csvWriter, &csvWriterMutex, &index, i, hashAlgorithm, &snapshot, &process]()

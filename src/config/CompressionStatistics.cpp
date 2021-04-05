@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -37,15 +37,12 @@ CompressionStatistics::CompressionStatistics(const Path &path)
 
 	//read lines
 	String rate;
-	while(true)
+	while(!textReader.IsAtEnd())
 	{
 		csvReader.ReadCell(cell);
-		bool haveValue = csvReader.ReadCell(rate);
+		csvReader.ReadCell(rate);
 
-		if(haveValue)
-			this->compressionStats[cell] = rate.ToFloat32();
-		else
-			break;
+		this->compressionStats[cell] = rate.ToFloat32();
 	}
 }
 

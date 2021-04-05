@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -30,9 +30,14 @@ public:
 	}
 
 	//Methods
-	bool Exists(const Path &path) const override;
-	AutoPointer<const Node> GetNode(const Path &path) const override;
 	SpaceInfo QuerySpace() const override;
+
+	//TODO: NOT IMPLEMENTED
+	UniquePointer<DirectoryEnumerator> EnumerateChildren(const Path &path) const override;
+	UniquePointer<InputStream> OpenFileForReading(const Path &path, bool verify) const override;
+	Optional<FileInfo> QueryFileInfo(const Path &path) const override;
+	Optional<Path> ReadLinkTarget(const Path &path) const override;
+	//TODO: NOT IMPLEMENTED
 
 private:
 	//Members

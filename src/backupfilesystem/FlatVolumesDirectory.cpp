@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -21,7 +21,7 @@
 //Namespaces
 using namespace StdXX;
 
-class FlatVolumesDirectoryIteratorState : public _stdxx_::DirectoryIteratorState
+/*class FlatVolumesDirectoryIteratorState : public _stdxx_::DirectoryIteratorState
 {
 public:
 	//Constructor
@@ -120,4 +120,4 @@ bool FlatVolumesDirectory::IsEmpty() const
 void FlatVolumesDirectory::ChangePermissions(const NodePermissions &newPermissions)
 {
 	NOT_IMPLEMENTED_ERROR; //implement me
-}
+}*/

@@ -77,7 +77,7 @@ void FlatVolumesFileSystem::Flush()
 	NOT_IMPLEMENTED_ERROR; //implement me
 }
 
-AutoPointer<const Node> FlatVolumesFileSystem::GetNode(const Path &path) const
+/*AutoPointer<const Node> FlatVolumesFileSystem::GetNode(const Path &path) const
 {
 	if(this->index.HasNodeIndex(path))
 	{
@@ -96,7 +96,7 @@ AutoPointer<const Node> FlatVolumesFileSystem::GetNode(const Path &path) const
 	}
 
 	return nullptr;
-}
+}*/
 
 void FlatVolumesFileSystem::Move(const Path &from, const Path &to)
 {
@@ -307,3 +307,55 @@ SeekableInputStream &FlatVolumesFileSystem::LockVolumeStream(uint64 volumeNumber
 
 	return *volume.file;
 }
+
+//TODO: NOT IMPLEMENTED
+UniquePointer<DirectoryEnumerator> FlatVolumesFileSystem::EnumerateChildren(const Path &path) const
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	return UniquePointer<DirectoryEnumerator>();
+}
+
+UniquePointer<InputStream> FlatVolumesFileSystem::OpenFileForReading(const Path &path, bool verify) const
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	return UniquePointer<InputStream>();
+}
+
+Optional<FileInfo> FlatVolumesFileSystem::QueryFileInfo(const Path &path) const
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	return Optional<FileInfo>();
+}
+
+Optional<Path> FlatVolumesFileSystem::ReadLinkTarget(const Path &path) const
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	return Optional<Path>();
+}
+
+void FlatVolumesFileSystem::CreateDirectory(const Path &path, const Permissions *permissions)
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+}
+
+void FlatVolumesFileSystem::DeleteFile(const Path &path)
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+}
+
+UniquePointer<OutputStream> FlatVolumesFileSystem::OpenFileForWriting(const Path &path)
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+	return UniquePointer<OutputStream>();
+}
+
+void FlatVolumesFileSystem::RemoveDirectory(const Path &path)
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+}
+
+void FlatVolumesFileSystem::ChangePermissions(const Path &path, const Permissions &newPermissions)
+{
+	NOT_IMPLEMENTED_ERROR; //TODO: implement me
+}
+//TODO: NOT IMPLEMENTED

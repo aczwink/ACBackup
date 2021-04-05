@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -28,13 +28,13 @@ int32 CommandOutputSnapshotStats(const Snapshot& snapshot)
 		const BackupNodeAttributes &attributes = index.GetNodeAttributes(i);
 		switch(attributes.Type())
 		{
-			case NodeType::Directory:
+			case FileType::Directory:
 				nDirs++;
 				break;
-			case NodeType::File:
+			case FileType::File:
 				nFiles++;
 				break;
-			case NodeType::Link:
+			case FileType::Link:
 				nLinks++;
 				break;
 		}

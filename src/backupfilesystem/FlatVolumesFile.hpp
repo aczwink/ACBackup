@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -21,7 +21,7 @@
 #include "../backup/BackupNodeAttributes.hpp"
 #include "FlatVolumesFileSystem.hpp"
 
-class FlatVolumesFile : public File
+/*class FlatVolumesFile : public File
 {
 public:
 	//Constructor
@@ -43,4 +43,4 @@ private:
 	const BackupNodeIndex& index;
 	const BackupNodeAttributes& attributes;
 	FlatVolumesFileSystem& fileSystem;
-};
+};*/

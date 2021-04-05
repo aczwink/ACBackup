@@ -68,6 +68,19 @@ public:
 		volume.counter--;
 	}
 
+
+	//TODO: NOT IMPLEMENTED
+	UniquePointer<DirectoryEnumerator> EnumerateChildren(const Path &path) const override;
+	UniquePointer<InputStream> OpenFileForReading(const Path &path, bool verify) const override;
+	Optional<FileInfo> QueryFileInfo(const Path &path) const override;
+	Optional<Path> ReadLinkTarget(const Path &path) const override;
+	void CreateDirectory(const Path &path, const Permissions *permissions) override;
+	void DeleteFile(const Path &path) override;
+	UniquePointer<OutputStream> OpenFileForWriting(const Path &path) override;
+	void RemoveDirectory(const Path &path) override;
+	void ChangePermissions(const Path &path, const Permissions &newPermissions) override;
+	//TODO: NOT IMPLEMENTED
+
 private:
 	//Members
 	Path dirPath;

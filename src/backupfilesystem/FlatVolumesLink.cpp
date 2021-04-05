@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -21,7 +21,7 @@
 //Local
 #include "FlatVolumesFile.hpp"
 
-//Public methods
+/*//Public methods
 void FlatVolumesLink::ChangePermissions(const NodePermissions &newPermissions)
 {
 	NOT_IMPLEMENTED_ERROR; //implement me
@@ -41,3 +41,4 @@ Path FlatVolumesLink::ReadTarget() const
 	const BackupNodeAttributes& attributes = this->index.GetNodeAttributes(this->nodeIndex);
 	return textReader.ReadStringBySize(attributes.Size());
 }
+*/
