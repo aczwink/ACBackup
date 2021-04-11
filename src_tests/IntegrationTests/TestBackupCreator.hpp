@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -16,44 +16,31 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <typeindex>
 
-#include <StdXX.hpp>
-using namespace StdXX;
-
-class InjectionContainer
+class TestBackupCreator
 {
 public:
-	//Inline
-	template<typename T>
-	inline T& Get()
+	//Constructor
+	inline TestBackupCreator()
 	{
-		ASSERT(this->instances.Contains(typeid(T)), u8"Instance does not exist!");
-		return *(T*)this->instances[typeid(T)];
+		File sourceDir(tempDirectory.Path() / String(u8"source"));
+		File backupDir(tempDirectory.Path() / String(u8"backuptarget"));
+
+		sourceDir.CreateDirectory();
+		backupDir.CreateDirectory();
+
+		int32 result = CommandInit(backupDir.Path(), sourceDir.Path());
+		ASSERT_EQUALS(EXIT_SUCCESS, result);
 	}
 
-	template<typename T>
-	inline void Register(T& instance)
+	//Destructor
+	inline ~TestBackupCreator()
 	{
-		this->instances[typeid(T)] = &instance;
-	}
-
-	inline void UnregisterAll()
-	{
-		this->instances.Release();
-	}
-
-	//Static
-	inline static InjectionContainer& Instance()
-	{
-		static InjectionContainer instance;
-		return instance;
+		File dir(this->tempDirectory.Path());
+		dir.RemoveChildrenRecursively();
 	}
 
 private:
 	//Members
-	Map<std::type_index, void*> instances;
-
-	//Constructor
-	InjectionContainer() = default;
+	TempDirectory tempDirectory;
 };

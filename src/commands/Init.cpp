@@ -69,11 +69,9 @@ static bool IsDirectoryEmpty(const Path& dirPath)
 	return dir.IsEmptyDirectory();
 }
 
-int32 CommandInit(const Path& sourcePath)
+int32 CommandInit(const Path& backupPath, const Path& sourcePath)
 {
-	ConfigManager c(sourcePath);
-
-	const Path &backupPath = c.Config().backupPath;
+	ConfigManager c(backupPath, sourcePath);
 
     //check if dir is empty
 	if (!IsDirectoryEmpty(backupPath))

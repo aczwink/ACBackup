@@ -144,8 +144,10 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 
 	const MatchResult& matchResult = commandLineParser.ParseResult();
 
+	Path backupPath = FileSystemsManager::Instance().OSFileSystem().GetWorkingDirectory();
+
 	if(matchResult.IsActivated(init))
-		return CommandInit(sourceDirectory.Value(matchResult));
+		return CommandInit(backupPath, sourceDirectory.Value(matchResult));
 
 	uint32 nWorkers = GetHardwareConcurrency();
 	if(matchResult.IsActivated(workers))
@@ -156,7 +158,7 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 
 	InjectionContainer &ic = InjectionContainer::Instance();
 
-	ConfigManager configManager;
+	ConfigManager configManager(backupPath);
 	ic.Register(configManager);
 
 	if(!TryInstantiateCompressorAndHashers())

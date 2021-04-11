@@ -28,8 +28,8 @@ class ConfigManager
 {
 public:
 	//Constructors
-	ConfigManager();
-	ConfigManager(const Path& sourcePath);
+	ConfigManager(const Path& backupPath);
+	ConfigManager(const Path& backupPath, const Path& sourcePath);
 
 	//Methods
 	void Write(const Path& dirPath);
@@ -59,7 +59,6 @@ private:
 	//Inline
 	inline void SetPathsInConfig()
 	{
-		this->config.backupPath = FileSystemsManager::Instance().OSFileSystem().GetWorkingDirectory();
 		this->config.dataPath = this->config.backupPath / String(u8"data");
 		this->config.indexPath = this->config.backupPath / String(u8"index");
 	}

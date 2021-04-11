@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -16,44 +16,19 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <typeindex>
-
-#include <StdXX.hpp>
+#include <StdXXTest.hpp>
+//Local
+#include "../../src/backup/SnapshotManager.hpp"
+#include "../../src/commands/Commands.hpp"
+#include "TestBackupCreator.hpp"
+//Namespaces
 using namespace StdXX;
 
-class InjectionContainer
+TEST_SUITE(SnapshotManagerTests)
 {
-public:
-	//Inline
-	template<typename T>
-	inline T& Get()
+	TEST_CASE(CreateSnapshotAndThenReadStats)
 	{
-		ASSERT(this->instances.Contains(typeid(T)), u8"Instance does not exist!");
-		return *(T*)this->instances[typeid(T)];
+		TestBackupCreator testBackupCreator;
+		SnapshotManager snapshotManager;
 	}
-
-	template<typename T>
-	inline void Register(T& instance)
-	{
-		this->instances[typeid(T)] = &instance;
-	}
-
-	inline void UnregisterAll()
-	{
-		this->instances.Release();
-	}
-
-	//Static
-	inline static InjectionContainer& Instance()
-	{
-		static InjectionContainer instance;
-		return instance;
-	}
-
-private:
-	//Members
-	Map<std::type_index, void*> instances;
-
-	//Constructor
-	InjectionContainer() = default;
 };

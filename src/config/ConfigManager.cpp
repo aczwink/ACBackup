@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -76,8 +76,10 @@ namespace StdXX::Serialization
 }
 
 //Constructors
-ConfigManager::ConfigManager()
+ConfigManager::ConfigManager(const Path& backupPath)
 {
+	this->config.backupPath = backupPath;
+
 	this->SetPathsInConfig();
 
 	Path filePath = this->config.backupPath / this->c_configFileName;
@@ -88,8 +90,9 @@ ConfigManager::ConfigManager()
 	deserializer >> this->config;
 }
 
-ConfigManager::ConfigManager(const Path& sourcePath)
+ConfigManager::ConfigManager(const Path& backupPath, const Path& sourcePath)
 {
+	this->config.backupPath = backupPath;
 	this->config.sourcePath = sourcePath;
 	this->SetPathsInConfig();
 }

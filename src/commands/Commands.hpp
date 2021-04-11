@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -26,7 +26,7 @@ using namespace StdXX::FileSystem;
 int32 CommandAddSnapshot(SnapshotManager& snapshotManager);
 int32 CommandDiffSnapshots(const SnapshotManager& snapshotManager, const String& snapshotName, const String& otherSnapshotName);
 int32 CommandDiffSnapshotWithSourceDirectory(const SnapshotManager& snapshotManager, const String& snapshotName);
-int32 CommandInit(const Path& sourcePath);
+int32 CommandInit(const Path& backupPath, const Path& sourcePath);
 int32 CommandOutputSnapshotHashValues(const Snapshot& snapshot);
 int32 CommandOutputSnapshotHashValues(const Snapshot& snapshot, const String& hashAlgorithm);
 int32 CommandOutputSnapshotStats(const Snapshot& snapshot);

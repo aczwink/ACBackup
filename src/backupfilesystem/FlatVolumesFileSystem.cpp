@@ -333,7 +333,7 @@ Optional<Path> FlatVolumesFileSystem::ReadLinkTarget(const Path &path) const
 	return Optional<Path>();
 }
 
-void FlatVolumesFileSystem::CreateDirectory(const Path &path, const Permissions *permissions)
+Optional<Errors::CreateDirectoryError> FlatVolumesFileSystem::CreateDirectory(const Path &path, const Permissions *permissions)
 {
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
 }
