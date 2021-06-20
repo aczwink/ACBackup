@@ -30,5 +30,8 @@ TEST_SUITE(SnapshotManagerTests)
 	{
 		TestBackupCreator testBackupCreator;
 		SnapshotManager snapshotManager;
+
+		int32 result = CommandAddSnapshot(snapshotManager);
+		ASSERT_EQUALS(EXIT_SUCCESS, result);
 	}
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -42,7 +42,7 @@ struct NodeIndexDifferences
 	//referring to the right index
 	BinaryTreeSet<uint32> differentData; //implies also that metadata is different
 	BinaryTreeSet<uint32> differentMetadata;
-	Map<uint32, uint32> moved; //maps right index to left index
+	BinaryTreeMap<uint32, uint32> moved; //maps right index to left index
 
 	//Inline
 	inline bool Exist() const

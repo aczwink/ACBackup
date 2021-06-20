@@ -17,13 +17,34 @@
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include <typeindex>
-
 #include <StdXX.hpp>
+#include "config/Config.hpp"
 using namespace StdXX;
 
 class InjectionContainer
 {
 public:
+	//Properties
+	inline const struct Config& Config() const
+	{
+		return *this->config;
+	}
+
+	inline void Config(const struct Config& config)
+	{
+		this->config = new struct Config(config);
+	}
+
+	inline class StatusTracker& StatusTracker()
+	{
+		return *this->statusTracker;
+	}
+
+	inline void StatusTracker(class StatusTracker* statusTracker)
+	{
+		this->statusTracker = statusTracker;
+	}
+
 	//Inline
 	template<typename T>
 	inline T& Get()
@@ -40,6 +61,8 @@ public:
 
 	inline void UnregisterAll()
 	{
+		this->config = nullptr;
+		this->statusTracker = nullptr;
 		this->instances.Release();
 	}
 
@@ -52,7 +75,9 @@ public:
 
 private:
 	//Members
-	Map<std::type_index, void*> instances;
+	UniquePointer<struct Config> config;
+	UniquePointer<class StatusTracker> statusTracker;
+	BinaryTreeMap<std::type_index, void*> instances;
 
 	//Constructor
 	InjectionContainer() = default;

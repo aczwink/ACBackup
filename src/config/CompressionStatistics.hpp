@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -44,6 +44,6 @@ private:
     const String c_comprStatsFileName = u8"compression_stats.csv";
 
     //Members
-    Map<String, float32> compressionStats;
+	BinaryTreeMap<String, float32> compressionStats;
 	Mutex compressionStatsLock;
 };

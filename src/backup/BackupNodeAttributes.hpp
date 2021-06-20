@@ -34,9 +34,9 @@ class BackupNodeAttributes : public FileSystemNodeAttributes
 {
 public:
 	//Constructors
-	inline BackupNodeAttributes(FileType type, uint64 size, const Optional<DateTime>& lastModifiedTime, UniquePointer<FileSystem::Permissions>&& permissions, DynamicArray<Block>&& blocks, Map<Crypto::HashAlgorithm, String>&& hashes)
+	inline BackupNodeAttributes(FileType type, uint64 size, const Optional<DateTime>& lastModifiedTime, UniquePointer<FileSystem::Permissions>&& permissions, DynamicArray<Block>&& blocks, BinaryTreeMap<Crypto::HashAlgorithm, String>&& hashes)
 		: FileSystemNodeAttributes(type, size, lastModifiedTime, Move(permissions)),
-		blocks(Forward<DynamicArray<Block>>(blocks)), hashes(Forward<Map<Crypto::HashAlgorithm, String>>(hashes))
+		blocks(Forward<DynamicArray<Block>>(blocks)), hashes(Forward<BinaryTreeMap<Crypto::HashAlgorithm, String>>(hashes))
 	{
 	}
 
@@ -77,7 +77,7 @@ public:
 		return this->hashes[hashAlgorithm];
 	}
 
-	inline const Map<Crypto::HashAlgorithm, String>& HashValues() const
+	inline const BinaryTreeMap<Crypto::HashAlgorithm, String>& HashValues() const
 	{
 		return this->hashes;
 	}
@@ -113,5 +113,5 @@ private:
 	Optional<enum CompressionSetting> compressionSetting;
 	Optional<Path> backReferenceTarget;
 	DynamicArray<Block> blocks;
-	Map<Crypto::HashAlgorithm, String> hashes;
+	BinaryTreeMap<Crypto::HashAlgorithm, String> hashes;
 };

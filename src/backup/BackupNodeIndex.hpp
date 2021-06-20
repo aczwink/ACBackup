@@ -61,18 +61,18 @@ public:
 
 private:
 	//Members
-	Map<uint32, DynamicArray<uint32>> nodeChildren;
-	Map<String, uint32> hashIndex;
+	BinaryTreeMap<uint32, DynamicArray<uint32>> nodeChildren;
+	BinaryTreeMap<String, uint32> hashIndex;
 
 	//Methods
 	void ComputeNodeChildren();
 	DynamicArray<Block> DeserializeBlocks(StdXX::Serialization::XmlDeserializer& xmlDeserializer, bool& ownsBlocks, Optional<enum CompressionSetting>& compressionSetting, Optional<Path>& owner);
-	Map<Crypto::HashAlgorithm, String> DeserializeHashes(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
+	BinaryTreeMap<Crypto::HashAlgorithm, String> DeserializeHashes(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
 	void DeserializeNode(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
 	UniquePointer<Permissions> DeserializePermissions(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
     void GenerateHashIndex();
 	void SerializeBlocks(Serialization::XmlSerializer& xmlSerializer, const DynamicArray<Block>& blocks, bool ownsBlocks, Optional<CompressionSetting>& compressionSetting, Optional<Path>& owner) const;
-	void SerializeHashes(Serialization::XmlSerializer& xmlSerializer, const Map<Crypto::HashAlgorithm, String>& hashes) const;
+	void SerializeHashes(Serialization::XmlSerializer& xmlSerializer, const BinaryTreeMap<Crypto::HashAlgorithm, String>& hashes) const;
 	void SerializeNode(Serialization::XmlSerializer& xmlSerializer, const Path &path, const BackupNodeAttributes& attributes) const;
 	void SerializePermissions(Serialization::XmlSerializer& xmlSerializer, const Permissions& nodePermissions) const;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -28,7 +28,7 @@ int32 CommandAddSnapshot(SnapshotManager& snapshotManager)
 {
 	InjectionContainer& ic = InjectionContainer::Instance();
 
-	OSFileSystemNodeIndex sourceIndex(ic.Get<ConfigManager>().Config().sourcePath);
+	OSFileSystemNodeIndex sourceIndex(ic.Config().sourcePath);
 	if(snapshotManager.AddSnapshot(sourceIndex))
 		stdOut << u8"Snapshot creation successful." << endl;
 	else

@@ -23,14 +23,21 @@ public:
 	//Constructor
 	inline TestBackupCreator()
 	{
-		File sourceDir(tempDirectory.Path() / String(u8"source"));
-		File backupDir(tempDirectory.Path() / String(u8"backuptarget"));
+		File sourceDir(this->tempDirectory.Path() / String(u8"source"));
+		File backupDir(this->tempDirectory.Path() / String(u8"backuptarget"));
 
 		sourceDir.CreateDirectory();
 		backupDir.CreateDirectory();
 
 		int32 result = CommandInit(backupDir.Path(), sourceDir.Path());
 		ASSERT_EQUALS(EXIT_SUCCESS, result);
+
+		this->configManager = new ConfigManager(backupDir.Path());
+
+		InjectionContainer &ic = InjectionContainer::Instance();
+		ic.Config(this->configManager->Config());
+
+		ic.StatusTracker(new StatusTracker);
 	}
 
 	//Destructor
@@ -38,9 +45,13 @@ public:
 	{
 		File dir(this->tempDirectory.Path());
 		dir.RemoveChildrenRecursively();
+
+		InjectionContainer &ic = InjectionContainer::Instance();
+		ic.UnregisterAll();
 	}
 
 private:
 	//Members
 	TempDirectory tempDirectory;
+	UniquePointer<ConfigManager> configManager;
 };

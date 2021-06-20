@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.6)
 project(ACBackup)
 find_package(XP-CMake REQUIRED) #we need advanced cmake modules
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 XPC_AutoBuildType()
 XPC_OptForHost()
@@ -29,6 +29,7 @@ set(SRC_FILES_SHARED
 	src/backupfilesystem/VolumesOutputStream.cpp
 	src/backupfilesystem/VolumesOutputStream.hpp
 
+	src/commands/AddSnapshot.cpp
 	src/commands/Init.cpp
 
 	src/config/CompressionStatistics.cpp
@@ -50,7 +51,7 @@ set(SRC_FILES_SHARED
 	src/Util.hpp
 	)
 
-add_executable(ACBackup ${SRC_FILES_SHARED} src/main.cpp src/commands/Commands.hpp src/InjectionContainer.hpp src/commands/AddSnapshot.cpp src/status/StatusTracker.hpp src/status/StatusTracker.cpp src/status/TerminalStatusTracker.hpp src/config/Config.hpp src/status/ProcessStatus.hpp src/config/ConfigException.hpp src/indexing/FileSystemNodeAttributes.hpp src/status/TerminalStatusTracker.cpp src/status/ProcessStatus.cpp src/commands/VerifySnapshot.cpp src/backupfilesystem/FlatVolumesFile.hpp src/backupfilesystem/FlatVolumesFile.cpp src/backupfilesystem/FlatVolumesDirectory.hpp src/backupfilesystem/FlatVolumesDirectory.cpp src/Serialization.hpp src/status/WebStatusTracker.hpp src/status/WebStatusTracker.cpp src/status/StatusTrackerWebService.hpp src/status/StatusTrackerWebService.cpp src/status/webresources.hpp src/indexing/LinkPointsOutOfIndexDirException.hpp src/backupfilesystem/FlatVolumesLink.hpp src/backupfilesystem/FlatVolumesLink.cpp src/CompressionSetting.hpp src/commands/Diff.cpp src/commands/OutputSnapshotStats.cpp src/commands/OutputSnapshotHashValues.cpp src/StreamPipingFailedException.hpp)
+add_executable(ACBackup ${SRC_FILES_SHARED} src/main.cpp src/commands/Commands.hpp src/InjectionContainer.hpp src/status/StatusTracker.hpp src/status/StatusTracker.cpp src/status/TerminalStatusTracker.hpp src/config/Config.hpp src/status/ProcessStatus.hpp src/config/ConfigException.hpp src/indexing/FileSystemNodeAttributes.hpp src/status/TerminalStatusTracker.cpp src/status/ProcessStatus.cpp src/commands/VerifySnapshot.cpp src/backupfilesystem/FlatVolumesFile.hpp src/backupfilesystem/FlatVolumesFile.cpp src/backupfilesystem/FlatVolumesDirectory.hpp src/backupfilesystem/FlatVolumesDirectory.cpp src/Serialization.hpp src/status/WebStatusTracker.hpp src/status/WebStatusTracker.cpp src/status/StatusTrackerWebService.hpp src/status/StatusTrackerWebService.cpp src/status/webresources.hpp src/indexing/LinkPointsOutOfIndexDirException.hpp src/backupfilesystem/FlatVolumesLink.hpp src/backupfilesystem/FlatVolumesLink.cpp src/CompressionSetting.hpp src/commands/Diff.cpp src/commands/OutputSnapshotStats.cpp src/commands/OutputSnapshotHashValues.cpp src/StreamPipingFailedException.hpp)
 target_link_libraries(ACBackup Std++ Std++Static)
 
 add_executable(tests_ACBackup ${SRC_FILES_SHARED} src_tests/IntegrationTests/SnapshotManagerTests.cpp src_tests/IntegrationTests/TestBackupCreator.hpp)

@@ -27,27 +27,27 @@ using namespace StdXX::CommonFileFormats;
 using namespace StdXX::Serialization;
 
 //Constants
-static const char *const c_tag_node_name = u8"Node";
-static const char *const c_tag_node_attribute_type_name = u8"type";
-static const char *const c_tag_node_blocks_name = u8"Blocks";
-const char* const c_tag_node_blocks_attribute_owned_name = u8"owned";
-const char* const c_tag_node_blocks_attribute_owner_name = u8"owner";
-const char* const c_tag_node_blocks_attribute_compression_name = u8"compression";
-static const char *const c_tag_node_blocks_block_name = u8"Block";
-static const char *const c_tag_node_blocks_block_attribute_offset = u8"offset";
-static const char *const c_tag_node_blocks_block_attribute_size = u8"size";
-static const char *const c_tag_node_blocks_block_attribute_volumeNumber = u8"volumeNumber";
-static const char *const c_tag_node_lastModified_name = u8"LastModified";
-static const char *const c_tag_node_permissions_name = u8"Permissions";
-static const char* const c_tag_node_permissions_attribute_type_name = u8"type";
-static const char *const c_tag_node_permissions_attribute_type_POSIX = u8"POSIX";
-static const char *const c_tag_node_size_name = u8"Size";
+static const char8_t *const c_tag_node_name = u8"Node";
+static const char8_t *const c_tag_node_attribute_type_name = u8"type";
+static const char8_t *const c_tag_node_blocks_name = u8"Blocks";
+const char8_t* const c_tag_node_blocks_attribute_owned_name = u8"owned";
+const char8_t* const c_tag_node_blocks_attribute_owner_name = u8"owner";
+const char8_t* const c_tag_node_blocks_attribute_compression_name = u8"compression";
+static const char8_t *const c_tag_node_blocks_block_name = u8"Block";
+static const char8_t *const c_tag_node_blocks_block_attribute_offset = u8"offset";
+static const char8_t *const c_tag_node_blocks_block_attribute_size = u8"size";
+static const char8_t *const c_tag_node_blocks_block_attribute_volumeNumber = u8"volumeNumber";
+static const char8_t *const c_tag_node_lastModified_name = u8"LastModified";
+static const char8_t *const c_tag_node_permissions_name = u8"Permissions";
+static const char8_t* const c_tag_node_permissions_attribute_type_name = u8"type";
+static const char8_t *const c_tag_node_permissions_attribute_type_POSIX = u8"POSIX";
+static const char8_t *const c_tag_node_size_name = u8"Size";
 
-static const char *const c_tag_nodes_name = u8"Nodes";
-static const char *const c_tag_path_name = u8"Path";
+static const char8_t *const c_tag_nodes_name = u8"Nodes";
+static const char8_t *const c_tag_path_name = u8"Path";
 
-static const char *const c_tag_snapshotIndex_name = u8"SnapshotIndex";
-static const char *const c_tag_node_hashValues_name = u8"HashValues";
+static const char8_t *const c_tag_snapshotIndex_name = u8"SnapshotIndex";
+static const char8_t *const c_tag_node_hashValues_name = u8"HashValues";
 
 namespace StdXX::Serialization
 {
@@ -223,12 +223,12 @@ DynamicArray<Block> BackupNodeIndex::DeserializeBlocks(XmlDeserializer &xmlDeser
 	return blocks;
 }
 
-Map<Crypto::HashAlgorithm, String> BackupNodeIndex::DeserializeHashes(Serialization::XmlDeserializer &xmlDeserializer)
+BinaryTreeMap<Crypto::HashAlgorithm, String> BackupNodeIndex::DeserializeHashes(Serialization::XmlDeserializer &xmlDeserializer)
 {
 	if(!xmlDeserializer.HasChildElement(c_tag_node_hashValues_name))
 		return {};
 
-	Map<Crypto::HashAlgorithm, String> result;
+	BinaryTreeMap<Crypto::HashAlgorithm, String> result;
 
 	xmlDeserializer.EnterElement(c_tag_node_hashValues_name);
 	while(xmlDeserializer.MoreChildrenExistsAtCurrentLevel())
@@ -275,7 +275,7 @@ void BackupNodeIndex::DeserializeNode(XmlDeserializer& xmlDeserializer)
 	Optional<CompressionSetting> compressionSetting;
 	Optional<Path> owner;
 	DynamicArray<Block> blocks = this->DeserializeBlocks(xmlDeserializer, ownsBlocks, compressionSetting, owner);
-	Map<Crypto::HashAlgorithm, String> hashes = this->DeserializeHashes(xmlDeserializer);
+	BinaryTreeMap<Crypto::HashAlgorithm, String> hashes = this->DeserializeHashes(xmlDeserializer);
 
 	UniquePointer<BackupNodeAttributes> attributes = new BackupNodeAttributes(type, size, lastModifiedTime, Move(permissions), Move(blocks), Move(hashes));
 	attributes->OwnsBlocks(ownsBlocks);
@@ -342,7 +342,7 @@ void BackupNodeIndex::SerializeBlocks(Serialization::XmlSerializer& xmlSerialize
 	xmlSerializer.LeaveElement();
 }
 
-void BackupNodeIndex::SerializeHashes(Serialization::XmlSerializer &xmlSerializer, const Map<Crypto::HashAlgorithm, String> &hashes) const
+void BackupNodeIndex::SerializeHashes(Serialization::XmlSerializer &xmlSerializer, const BinaryTreeMap<Crypto::HashAlgorithm, String> &hashes) const
 {
 	if(hashes.IsEmpty())
 		return;

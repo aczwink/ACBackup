@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -29,7 +29,7 @@ using namespace StdXX;
 #include "../backupfilesystem/FlatVolumesFileSystem.hpp"
 
 //Constants
-static const char *const c_hashFileSuffix = u8"_hash.json";
+static const char8_t *const c_hashFileSuffix = u8"_hash.json";
 
 class Snapshot
 {

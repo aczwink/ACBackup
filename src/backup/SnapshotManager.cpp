@@ -37,7 +37,7 @@ bool SnapshotManager::AddSnapshot(const OSFileSystemNodeIndex& sourceIndex)
 	//we simply include all nodes whether they have changed or not and skip diff.deleted
 	const NodeIndexDifferences diff = this->ComputeDifference(sourceIndex, true);
 
-	UnprotectFile(ic.Get<ConfigManager>().Config().dataPath);
+	UnprotectFile(ic.Config().dataPath);
 	UniquePointer<Snapshot> snapshot = new Snapshot();
 
 	const uint64 totalSize = sourceIndex.ComputeTotalSize(diff.differentData);
@@ -165,7 +165,7 @@ NodeIndexDifferences SnapshotManager::ComputeDifference(const OSFileSystemNodeIn
 
 DynamicArray<Path> SnapshotManager::ListPathsInIndexDirectory()
 {
-	const Path& indexPath = InjectionContainer::Instance().Get<ConfigManager>().Config().indexPath;
+	const Path& indexPath = InjectionContainer::Instance().Config().indexPath;
 	File dir(indexPath);
 	auto dirWalker = dir.WalkFiles();
 
@@ -181,7 +181,7 @@ DynamicArray<Path> SnapshotManager::ListPathsInIndexDirectory()
 
 void SnapshotManager::ReadInSnapshots()
 {
-	const Path& indexPath = InjectionContainer::Instance().Get<ConfigManager>().Config().indexPath;
+	const Path& indexPath = InjectionContainer::Instance().Config().indexPath;
 
 	DynamicArray<Path> xmlFiles = this->ListPathsInIndexDirectory();
 	for(const Path& path : xmlFiles)

@@ -26,23 +26,23 @@ using namespace StdXX::CommonFileFormats;
 using namespace StdXX::Serialization;
 
 //Constants
-const char* c_blockSize = u8"blockSize";
+const char8_t* c_blockSize = u8"blockSize";
 
-const char* c_compression = u8"compression";
-const char* c_compression_lzma = u8"lzma";
+const char8_t* c_compression = u8"compression";
+const char8_t* c_compression_lzma = u8"lzma";
 
-const char* c_maxCompressionLevel = u8"maxCompressionLevel";
+const char8_t* c_maxCompressionLevel = u8"maxCompressionLevel";
 
-static const char *const c_hashAlgorithm = u8"hashAlgorithm";
+static const char8_t *const c_hashAlgorithm = u8"hashAlgorithm";
 
-static const char *const c_sourcePath = u8"sourcePath";
+static const char8_t *const c_sourcePath = u8"sourcePath";
 
-const char* c_statusTracker = u8"statusTracker";
-const char* c_statusTracker_web = u8"web";
+const char8_t* c_statusTracker = u8"statusTracker";
+const char8_t* c_statusTracker_web = u8"web";
 
-const char* c_statusTracker_port = u8"statusTrackerPort";
+const char8_t* c_statusTracker_port = u8"statusTrackerPort";
 
-const char* c_volumeSize = u8"volumeSize";
+const char8_t* c_volumeSize = u8"volumeSize";
 
 namespace StdXX::Serialization
 {

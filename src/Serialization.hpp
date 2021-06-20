@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -20,7 +20,7 @@
 #include <StdXX.hpp>
 
 //Constants
-static const char *const c_hashAlgorithm_sha512_256 = u8"sha512/256";
+static const char8_t *const c_hashAlgorithm_sha512_256 = u8"sha512/256";
 
 namespace StdXX::Serialization
 {

@@ -76,14 +76,14 @@ void OSFileSystemNodeIndex::GenerateIndex()
 {
 	InjectionContainer& ic = InjectionContainer::Instance();
 
-	ProcessStatus& findStatus = ic.Get<StatusTracker>().AddProcessStatusTracker(u8"Reading directory");
+	ProcessStatus& findStatus = ic.StatusTracker().AddProcessStatusTracker(u8"Reading directory");
 	this->IndexNode(String(u8"/"), findStatus);
 	findStatus.Finished();
 }
 
 void OSFileSystemNodeIndex::IndexDirectoryChildren(const Path& path, ProcessStatus& findStatus)
 {
-	File dir(path);
+	File dir(this->MapNodePathToFileSystemPath(path));
 
 	for(const DirectoryEntry& child : dir)
 	{
@@ -93,7 +93,7 @@ void OSFileSystemNodeIndex::IndexDirectoryChildren(const Path& path, ProcessStat
 
 void OSFileSystemNodeIndex::IndexNode(const Path& nodePath, ProcessStatus& findStatus)
 {
-	File node(nodePath);
+	File node(this->MapNodePathToFileSystemPath(nodePath));
 
 	if(node.Type() == FileType::Link)
 	{
