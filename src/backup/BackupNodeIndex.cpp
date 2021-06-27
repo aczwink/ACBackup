@@ -312,7 +312,7 @@ UniquePointer<Permissions> BackupNodeIndex::DeserializePermissions(XmlDeserializ
 
 void BackupNodeIndex::GenerateHashIndex()
 {
-    Crypto::HashAlgorithm hashAlgorithm = InjectionContainer::Instance().Get<ConfigManager>().Config().hashAlgorithm;
+    Crypto::HashAlgorithm hashAlgorithm = InjectionContainer::Instance().Config().hashAlgorithm;
 
     for(uint32 i = 0; i < this->GetNumberOfNodes(); i++)
     {

@@ -53,7 +53,7 @@ Snapshot::Snapshot()
 	this->prev = nullptr;
 	this->index = new BackupNodeIndex();
 
-	const Path& dataPath = InjectionContainer::Instance().Get<ConfigManager>().Config().dataPath;
+	const Path& dataPath = InjectionContainer::Instance().Config().dataPath;
 
 	this->fileSystem = new FlatVolumesFileSystem(dataPath / this->name, *this->index);
 }
@@ -64,7 +64,7 @@ Snapshot::Snapshot(const String& name, Serialization::XmlDeserializer& xmlDeseri
 	this->prev = nullptr;
 	this->index = new BackupNodeIndex(xmlDeserializer);
 
-	const Path& dataPath = InjectionContainer::Instance().Get<ConfigManager>().Config().dataPath;
+	const Path& dataPath = InjectionContainer::Instance().Config().dataPath;
 	this->fileSystem = new FlatVolumesFileSystem(dataPath / this->name, *this->index);
 }
 
@@ -90,9 +90,9 @@ void Snapshot::BackupNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex
 	this->index->AddNode(filePath, attributes);
 
 	InjectionContainer &injectionContainer = InjectionContainer::Instance();
-	const ConfigManager &configManager = injectionContainer.Get<ConfigManager>();
+	const ConfigManager &configManager = injectionContainer.ConfigManager();
 	const Config &config = configManager.Config();
-	CompressionStatistics& compressionStatistics = injectionContainer.Get<CompressionStatistics>();
+	CompressionStatistics& compressionStatistics = injectionContainer.CompressionStats();
 
 	String ext = filePath.GetFileExtension();
 
@@ -111,7 +111,7 @@ void Snapshot::BackupNode(uint32 index, const OSFileSystemNodeIndex &sourceIndex
 		if(fileAttributes.Size() > 100)
 			compressionRate = 0; //text usually compresses well
 		else
-			compressionRate = 1; //but it doesnt make sense to compress to short text
+			compressionRate = 1; //but it doesnt make sense to compress too short text
 	}
 	else
 	{
@@ -191,9 +191,9 @@ void Snapshot::Restore(const Path &restorePoint) const
 {
 	InjectionContainer& ic = InjectionContainer::Instance();
 
-	StaticThreadPool& threadPool = InjectionContainer::Instance().Get<StaticThreadPool>();
+	StaticThreadPool& threadPool = InjectionContainer::Instance().TaskQueue();
 
-	ProcessStatus& process = ic.Get<StatusTracker>().AddProcessStatusTracker(u8"Restoring snapshot: " + this->Name(),
+	ProcessStatus& process = ic.StatusTracker().AddProcessStatusTracker(u8"Restoring snapshot: " + this->Name(),
 			this->Index().GetNumberOfNodes(), this->Index().ComputeTotalSize());
 
 	//all dirs in order first
@@ -267,8 +267,7 @@ void Snapshot::Restore(const Path &restorePoint) const
 
 void Snapshot::Serialize() const
 {
-	ConfigManager& configManager = InjectionContainer::Instance().Get<ConfigManager>();
-	const Config &config = configManager.Config();
+	const Config &config = InjectionContainer::Instance().Config();
 	Crypto::HashAlgorithm hashAlgorithm = config.hashAlgorithm;
 
 	FileOutputStream indexFile(this->IndexFilePath());
@@ -330,8 +329,6 @@ UniquePointer<Snapshot> Snapshot::Deserialize(const Path &path)
 
 	if(extension == u8"lzma")
 	{
-		ConfigManager& configManager = InjectionContainer::Instance().Get<ConfigManager>();
-
 		FileInputStream hashInputStream(path.GetParent() / title + String(c_hashFileSuffix));
 		BufferedInputStream hashBufferedInputStream(hashInputStream);
 		Serialization::JSONDeserializer jsonDeserializer(hashBufferedInputStream);

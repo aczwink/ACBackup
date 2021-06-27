@@ -41,9 +41,9 @@ bool SnapshotManager::AddSnapshot(const OSFileSystemNodeIndex& sourceIndex)
 	UniquePointer<Snapshot> snapshot = new Snapshot();
 
 	const uint64 totalSize = sourceIndex.ComputeTotalSize(diff.differentData);
-	ProcessStatus& process = ic.Get<StatusTracker>().AddProcessStatusTracker(u8"Creating snapshot: " + snapshot->Name(), sourceIndex.GetNumberOfNodes(), totalSize);
+	ProcessStatus& process = ic.StatusTracker().AddProcessStatusTracker(u8"Creating snapshot: " + snapshot->Name(), sourceIndex.GetNumberOfNodes(), totalSize);
 
-	StaticThreadPool& threadPool = InjectionContainer::Instance().Get<StaticThreadPool>();
+	StaticThreadPool& threadPool = InjectionContainer::Instance().TaskQueue();
 	for(uint32 index : diff.differentData)
 	{
 		threadPool.EnqueueTask([&snapshot, index, &sourceIndex, &process]()
@@ -72,15 +72,15 @@ bool SnapshotManager::AddSnapshot(const OSFileSystemNodeIndex& sourceIndex)
 	threadPool.WaitForAllTasksToComplete();
 	process.Finished();
 
-	WriteProtectFile(ic.Get<ConfigManager>().Config().dataPath);
+	WriteProtectFile(ic.Config().dataPath);
 
-	UnprotectFile(ic.Get<ConfigManager>().Config().indexPath);
+	UnprotectFile(ic.Config().indexPath);
 	snapshot->Serialize();
 	snapshot->WriteProtect();
-	WriteProtectFile(ic.Get<ConfigManager>().Config().indexPath);
+	WriteProtectFile(ic.Config().indexPath);
 
-	const Config& config = ic.Get<ConfigManager>().Config();
-	ic.Get<CompressionStatistics>().Write(config.backupPath);
+	const Config& config = ic.Config();
+	ic.CompressionStats().Write(config.backupPath);
 
 	//close snapshot and read it in again
 	this->snapshots.Release();
@@ -101,9 +101,9 @@ DynamicArray<uint32> SnapshotManager::VerifySnapshot(const Snapshot &snapshot, b
 
 	const FileSystemNodeIndex& index = snapshot.Index();
 
-	ProcessStatus& process = ic.Get<StatusTracker>().AddProcessStatusTracker(u8"Verifying snapshot: " + snapshot.Name(),
+	ProcessStatus& process = ic.StatusTracker().AddProcessStatusTracker(u8"Verifying snapshot: " + snapshot.Name(),
 			index.GetNumberOfNodes(), full ? index.ComputeTotalSize() : snapshot.ComputeSize());
-	StaticThreadPool& threadPool = InjectionContainer::Instance().Get<StaticThreadPool>();
+	StaticThreadPool& threadPool = InjectionContainer::Instance().TaskQueue();
 
 	DynamicArray<uint32> failedNodes;
 	Mutex failedFilesLock;
@@ -163,16 +163,16 @@ NodeIndexDifferences SnapshotManager::ComputeDifference(const OSFileSystemNodeIn
 	return difference;
 }
 
-DynamicArray<Path> SnapshotManager::ListPathsInIndexDirectory()
+DynamicArray<String> SnapshotManager::ListSnapshotMetadataFiles()
 {
 	const Path& indexPath = InjectionContainer::Instance().Config().indexPath;
 	File dir(indexPath);
-	auto dirWalker = dir.WalkFiles();
 
-	DynamicArray<Path> snapshotFiles;
-	for(const Path& relPath : dirWalker)
+	DynamicArray<String> snapshotFiles;
+	for(const auto& entry : dir)
 	{
-		snapshotFiles.Push(relPath);
+		if(entry.type == FileType::File)
+			snapshotFiles.Push(entry.name);
 	}
 	snapshotFiles.Sort();
 
@@ -183,11 +183,11 @@ void SnapshotManager::ReadInSnapshots()
 {
 	const Path& indexPath = InjectionContainer::Instance().Config().indexPath;
 
-	DynamicArray<Path> xmlFiles = this->ListPathsInIndexDirectory();
-	for(const Path& path : xmlFiles)
+	auto files = this->ListSnapshotMetadataFiles();
+	for(const auto& entry : files)
 	{
 		//try to deserialize
-		UniquePointer<Snapshot> snapshot = Snapshot::Deserialize(indexPath / path);
+		UniquePointer<Snapshot> snapshot = Snapshot::Deserialize(indexPath / entry);
 		if(!snapshot.IsNull())
 		{
 			this->snapshots.Push(Move(snapshot));

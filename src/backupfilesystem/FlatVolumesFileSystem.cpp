@@ -112,7 +112,7 @@ UniquePointer<InputStream> FlatVolumesFileSystem::OpenFileForReading(uint32 file
 
 	ChainedInputStream* chain = new ChainedInputStream(StdXX::Move(blockInputStream));
 
-	const Config &config = InjectionContainer::Instance().Get<ConfigManager>().Config();
+	const Config &config = InjectionContainer::Instance().Config();
 
 	chain->Add( new BufferedInputStream(chain->GetEnd()) );
 
@@ -187,9 +187,9 @@ void FlatVolumesFileSystem::WriteProtect()
 		return;
 	auto dirWalker = dir.WalkFiles();
 
-	for(const Path& relPath : dirWalker)
+	for(const Path& path : dirWalker)
 	{
-		WriteProtectFile(this->dirPath / relPath);
+		WriteProtectFile(path);
 	}
 	WriteProtectFile(this->dirPath);
 }
@@ -273,7 +273,7 @@ SeekableOutputStream &FlatVolumesFileSystem::FindStream(const OutputStream *writ
 	newVolume.number = this->writing.nextVolumeNumber++;
 	newVolume.file = new FileOutputStream(this->dirPath / String::Number(newVolume.number));
 	newVolume.ownedWriter = writer;
-	newVolume.leftSize = InjectionContainer::Instance().Get<ConfigManager>().Config().volumeSize;
+	newVolume.leftSize = InjectionContainer::Instance().Config().volumeSize;
 
 	leftSize = newVolume.leftSize;
 	SeekableOutputStream& result = *newVolume.file;

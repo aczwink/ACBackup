@@ -24,6 +24,19 @@
 //Namespaces
 using namespace StdXX;
 
+uint32 CountOwnedFiles(const Snapshot& snapshot)
+{
+	uint32 count = 0;
+
+	for(uint32 i = 0; i < snapshot.Index().GetNumberOfNodes(); i++)
+	{
+		if(snapshot.Index().GetNodeAttributes(i).OwnsBlocks())
+			count++;
+	}
+
+	return count;
+}
+
 TEST_SUITE(SnapshotManagerTests)
 {
 	TEST_CASE(CreateSnapshotAndThenReadStats)
@@ -31,7 +44,84 @@ TEST_SUITE(SnapshotManagerTests)
 		TestBackupCreator testBackupCreator;
 		SnapshotManager snapshotManager;
 
+		testBackupCreator.AddSourceDir({u8"/testdir"});
+		testBackupCreator.AddSourceFile({u8"/testdir/nested"}, u8"test");
+		testBackupCreator.AddSourceFile({u8"/test"}, u8"test");
+		testBackupCreator.AddSourceLink({u8"/testlink"}, u8"test");
+
 		int32 result = CommandAddSnapshot(snapshotManager);
 		ASSERT_EQUALS(EXIT_SUCCESS, result);
+
+		testBackupCreator.VerifySnapshotMatchesTestState(snapshotManager.NewestSnapshot());
+		ASSERT_EQUALS(3, CountOwnedFiles(snapshotManager.NewestSnapshot()));
+	}
+
+	TEST_CASE(UnchangedFileShouldNotBeBackuppedAgain)
+	{
+		TestBackupCreator testBackupCreator;
+		SnapshotManager snapshotManager;
+
+		testBackupCreator.AddSourceFile({u8"/test"}, u8"test");
+
+		int32 result = CommandAddSnapshot(snapshotManager);
+		ASSERT_EQUALS(EXIT_SUCCESS, result);
+
+		testBackupCreator.VerifySnapshotMatchesTestState(snapshotManager.NewestSnapshot());
+		ASSERT_EQUALS(1, CountOwnedFiles(snapshotManager.NewestSnapshot()));
+
+		Sleep(1 * 1000 * 1000 * 1000); //snapshot names are based on the current time and have second precision
+
+		result = CommandAddSnapshot(snapshotManager);
+		ASSERT_EQUALS(EXIT_SUCCESS, result);
+
+		testBackupCreator.VerifySnapshotMatchesTestState(snapshotManager.NewestSnapshot());
+		ASSERT_EQUALS(0, CountOwnedFiles(snapshotManager.NewestSnapshot()));
+	}
+
+	TEST_CASE(ChangedFileShouldBeBackuppedAgain)
+	{
+		TestBackupCreator testBackupCreator;
+		SnapshotManager snapshotManager;
+
+		testBackupCreator.AddSourceFile({u8"/test"}, u8"test");
+
+		int32 result = CommandAddSnapshot(snapshotManager);
+		ASSERT_EQUALS(EXIT_SUCCESS, result);
+
+		testBackupCreator.VerifySnapshotMatchesTestState(snapshotManager.NewestSnapshot());
+		ASSERT_EQUALS(1, CountOwnedFiles(snapshotManager.NewestSnapshot()));
+
+		Sleep(1 * 1000 * 1000 * 1000); //snapshot names are based on the current time and have second precision
+		testBackupCreator.AddSourceFile({u8"/test"}, u8"test2");
+
+		result = CommandAddSnapshot(snapshotManager);
+		ASSERT_EQUALS(EXIT_SUCCESS, result);
+
+		testBackupCreator.VerifySnapshotMatchesTestState(snapshotManager.NewestSnapshot());
+		ASSERT_EQUALS(1, CountOwnedFiles(snapshotManager.NewestSnapshot()));
+	}
+
+	TEST_CASE(MovedFileShouldNotBeBackuppedAgain)
+	{
+		TestBackupCreator testBackupCreator;
+		SnapshotManager snapshotManager;
+
+		testBackupCreator.AddSourceFile({u8"/test"}, u8"test");
+
+		int32 result = CommandAddSnapshot(snapshotManager);
+		ASSERT_EQUALS(EXIT_SUCCESS, result);
+
+		testBackupCreator.VerifySnapshotMatchesTestState(snapshotManager.NewestSnapshot());
+		ASSERT_EQUALS(1, CountOwnedFiles(snapshotManager.NewestSnapshot()));
+
+		Sleep(1 * 1000 * 1000 * 1000); //snapshot names are based on the current time and have second precision
+		testBackupCreator.RemoveFile({u8"/test"});
+		testBackupCreator.AddSourceFile({u8"/changed"}, u8"test");
+
+		result = CommandAddSnapshot(snapshotManager);
+		ASSERT_EQUALS(EXIT_SUCCESS, result);
+
+		testBackupCreator.VerifySnapshotMatchesTestState(snapshotManager.NewestSnapshot());
+		ASSERT_EQUALS(0, CountOwnedFiles(snapshotManager.NewestSnapshot()));
 	}
 };

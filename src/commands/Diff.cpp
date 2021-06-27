@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -64,7 +64,7 @@ int32 CommandDiffSnapshotWithSourceDirectory(const SnapshotManager& snapshotMana
 		stdErr << u8"Snapshot with name '" << snapshotName << u8"' not found." << endl;
 		return EXIT_FAILURE;
 	}
-	OSFileSystemNodeIndex sourceIndex(InjectionContainer::Instance().Get<ConfigManager>().Config().sourcePath);
+	OSFileSystemNodeIndex sourceIndex(InjectionContainer::Instance().Config().sourcePath);
 	Diff(*snapshot, sourceIndex);
 
 	return EXIT_SUCCESS;

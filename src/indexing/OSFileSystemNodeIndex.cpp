@@ -46,7 +46,7 @@ String OSFileSystemNodeIndex::ComputeNodeHash(uint32 nodeIndex) const
 		inputStream = this->OpenLinkTargetAsStream(nodePath);
 
 	InjectionContainer &injectionContainer = InjectionContainer::Instance();
-	const Config &config = injectionContainer.Get<ConfigManager>().Config();
+	const Config &config = injectionContainer.Config();
 
 	UniquePointer<Crypto::HashFunction> hasher = Crypto::HashFunction::CreateInstance(config.hashAlgorithm);
 	Crypto::HashingInputStream hashingInputStream(*inputStream, hasher.operator->());

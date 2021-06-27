@@ -35,8 +35,8 @@ NodeIndexDifferences NodeIndexDifferenceResolver::ComputeDiff(const BackupNodeIn
 BinaryTreeSet<uint32> NodeIndexDifferenceResolver::ComputeDeleted(const FileSystemNodeIndex& leftIndex, const FileSystemNodeIndex& rightIndex, const BinaryTreeSet<uint32>& indexes) const
 {
 	InjectionContainer &injectionContainer = InjectionContainer::Instance();
-	StaticThreadPool& threadPool = injectionContainer.Get<StaticThreadPool>();
-	StatusTracker& statusTracker = injectionContainer.Get<StatusTracker>();
+	StaticThreadPool& threadPool = injectionContainer.TaskQueue();
+	StatusTracker& statusTracker = injectionContainer.StatusTracker();
 
 	BinaryTreeSet<uint32> nodeDifferences;
 
@@ -68,8 +68,8 @@ BinaryTreeSet<uint32> NodeIndexDifferenceResolver::ComputeDifference(const FileS
 	Mutex diffLock;
 
 	InjectionContainer &injectionContainer = InjectionContainer::Instance();
-	StaticThreadPool& threadPool = injectionContainer.Get<StaticThreadPool>();
-	StatusTracker& statusTracker = injectionContainer.Get<StatusTracker>();
+	StaticThreadPool& threadPool = injectionContainer.TaskQueue();
+	StatusTracker& statusTracker = injectionContainer.StatusTracker();
 
 	ProcessStatus& process = statusTracker.AddProcessStatusTracker(u8"Computing index differences", leftIndex.GetNumberOfNodes(), leftIndex.ComputeTotalSize());
 	for(uint32 i = 0; i < leftIndex.GetNumberOfNodes(); i++)
@@ -114,8 +114,8 @@ BinaryTreeSet<uint32> NodeIndexDifferenceResolver::ComputeDifference(const FileS
 void NodeIndexDifferenceResolver::ComputeNodeDifferences(NodeIndexDifferences& nodeIndexDifferences, const BackupNodeIndex& leftIndex, const FileSystemNodeIndex& rightIndex, const BinaryTreeSet<uint32>& rightToLeftDiffs) const
 {
 	InjectionContainer &injectionContainer = InjectionContainer::Instance();
-	StatusTracker& statusTracker = injectionContainer.Get<StatusTracker>();
-	StaticThreadPool& threadPool = injectionContainer.Get<StaticThreadPool>();
+	StatusTracker& statusTracker = injectionContainer.StatusTracker();
+	StaticThreadPool& threadPool = injectionContainer.TaskQueue();
 
 	Mutex nodeDifferencesLock;
 
@@ -166,10 +166,10 @@ void NodeIndexDifferenceResolver::ComputeNodeDifferences(NodeIndexDifferences& n
 NodeIndexDifferences NodeIndexDifferenceResolver::ResolveDifferences(const BackupNodeIndex &leftIndex, const FileSystemNodeIndex &rightIndex, const BinaryTreeSet<uint32> &leftToRightDiffs, const BinaryTreeSet<uint32> &rightToLeftDiffs) const
 {
 	InjectionContainer &injectionContainer = InjectionContainer::Instance();
-	StatusTracker& statusTracker = injectionContainer.Get<StatusTracker>();
-	StaticThreadPool& threadPool = injectionContainer.Get<StaticThreadPool>();
+	StatusTracker& statusTracker = injectionContainer.StatusTracker();
+	StaticThreadPool& threadPool = injectionContainer.TaskQueue();
 
-	const Config &config = injectionContainer.Get<ConfigManager>().Config();
+	const Config &config = injectionContainer.Config();
 
 	NodeIndexDifferences nodeDifferences;
 
@@ -189,7 +189,7 @@ String NodeIndexDifferenceResolver::RetrieveNodeHash(uint32 nodeIndex, const Fil
 	if(backupNodeIndex)
 	{
 		InjectionContainer &injectionContainer = InjectionContainer::Instance();
-		const Config &config = injectionContainer.Get<ConfigManager>().Config();
+		const Config &config = injectionContainer.Config();
 
 		const BackupNodeAttributes& nodeAttributes = backupNodeIndex->GetNodeAttributes(nodeIndex);
 		return nodeAttributes.Hash(config.hashAlgorithm);

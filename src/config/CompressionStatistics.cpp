@@ -59,7 +59,7 @@ void CompressionStatistics::AddCompressionRateSample(const String &fileExtension
 
 uint8 CompressionStatistics::GetCompressionLevel(float32 compressionRate) const
 {
-	const Config& config = InjectionContainer::Instance().Get<ConfigManager>().Config();
+	const Config& config = InjectionContainer::Instance().Config();
 
 	float32 c = (config.maxCompressionLevel+1) * (1 - compressionRate);
 	float32 compressionLevel = roundf(c) - 1;

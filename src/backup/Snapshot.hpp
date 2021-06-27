@@ -113,8 +113,7 @@ private:
 
 	inline Path PathPrefix() const
 	{
-		ConfigManager& configManager = InjectionContainer::Instance().Get<ConfigManager>();
-		const Config &config = configManager.Config();
+		const Config &config = InjectionContainer::Instance().Config();
 		return config.indexPath / this->name + String(u8".xml");
 	}
 };

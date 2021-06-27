@@ -16,23 +16,38 @@
  * You should have received a copy of the GNU General Public License
  * along with ACBackup.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include <typeindex>
-#include <StdXX.hpp>
-#include "config/Config.hpp"
+#include "config/ConfigManager.hpp"
+#include "config/CompressionStatistics.hpp"
+
 using namespace StdXX;
 
 class InjectionContainer
 {
 public:
 	//Properties
-	inline const struct Config& Config() const
+	inline CompressionStatistics& CompressionStats()
 	{
-		return *this->config;
+		return *this->compressionStatistics;
 	}
 
-	inline void Config(const struct Config& config)
+	inline void CompressionStats(CompressionStatistics* compressionStatistics)
 	{
-		this->config = new struct Config(config);
+		this->compressionStatistics = compressionStatistics;
+	}
+
+	inline const struct Config& Config() const
+	{
+		return this->ConfigManager().Config();
+	}
+
+	inline void ConfigManager(class ConfigManager* configManager)
+	{
+		this->configManager = configManager;
+	}
+
+	inline const class ConfigManager& ConfigManager() const
+	{
+		return *this->configManager;
 	}
 
 	inline class StatusTracker& StatusTracker()
@@ -45,25 +60,23 @@ public:
 		this->statusTracker = statusTracker;
 	}
 
+	inline StaticThreadPool& TaskQueue()
+	{
+		return *this->taskQueue;
+	}
+
+	inline void TaskQueue(uint32 nWorkers)
+	{
+		this->taskQueue = new StaticThreadPool(nWorkers);
+	}
+
 	//Inline
-	template<typename T>
-	inline T& Get()
-	{
-		ASSERT(this->instances.Contains(typeid(T)), u8"Instance does not exist!");
-		return *(T*)this->instances[typeid(T)];
-	}
-
-	template<typename T>
-	inline void Register(T& instance)
-	{
-		this->instances[typeid(T)] = &instance;
-	}
-
 	inline void UnregisterAll()
 	{
-		this->config = nullptr;
+		this->compressionStatistics = nullptr;
+		this->configManager = nullptr;
 		this->statusTracker = nullptr;
-		this->instances.Release();
+		this->taskQueue = nullptr;
 	}
 
 	//Static
@@ -75,9 +88,10 @@ public:
 
 private:
 	//Members
-	UniquePointer<struct Config> config;
+	CompressionStatistics* compressionStatistics;
+	class ConfigManager* configManager;
 	UniquePointer<class StatusTracker> statusTracker;
-	BinaryTreeMap<std::type_index, void*> instances;
+	UniquePointer<StaticThreadPool> taskQueue;
 
 	//Constructor
 	InjectionContainer() = default;

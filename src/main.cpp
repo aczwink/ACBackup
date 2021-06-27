@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -33,7 +33,7 @@ struct AutoInjectionClearer
 
 static bool TryInstantiateCompressorAndHashers()
 {
-    const Config& config = InjectionContainer::Instance().Get<ConfigManager>().Config();
+    const Config& config = InjectionContainer::Instance().Config();
 
     NullOutputStream nullOutputStream;
     UniquePointer<Compressor> compressor = Compressor::Create(config.compressionStreamFormatType, config.compressionAlgorithm, nullOutputStream);
@@ -159,23 +159,22 @@ int32 Main(const String& programName, const FixedArray<String>& args)
 	InjectionContainer &ic = InjectionContainer::Instance();
 
 	ConfigManager configManager(backupPath);
-	ic.Register(configManager);
+	ic.ConfigManager(&configManager);
 
 	if(!TryInstantiateCompressorAndHashers())
 	    return EXIT_FAILURE;
 
-	UniquePointer<StatusTracker> statusTracker = StatusTracker::CreateInstance(configManager.Config().statusTrackerType);
-	ic.Register(*statusTracker);
+	StatusTracker* statusTracker = StatusTracker::CreateInstance(configManager.Config().statusTrackerType);
+	ic.StatusTracker(statusTracker);
 
-	StaticThreadPool threadPool(nWorkers);
-	ic.Register(threadPool);
+	ic.TaskQueue(nWorkers);
 
 	SnapshotManager snapshotManager;
 
 	if(matchResult.IsActivated(addSnapshot))
 	{
 		CompressionStatistics compressionStatistics(configManager.Config().backupPath);
-		ic.Register(compressionStatistics);
+		ic.CompressionStats(&compressionStatistics);
 
 		return CommandAddSnapshot(snapshotManager);
 	}

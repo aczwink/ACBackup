@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -32,7 +32,7 @@ StatusTracker *StatusTracker::CreateInstance(StatusTrackerType type)
 		case StatusTrackerType::Terminal:
 			return new TerminalStatusTracker;
 		case StatusTrackerType::Web:
-			return new WebStatusTracker(InjectionContainer::Instance().Get<ConfigManager>().Config().statusTrackerPort);
+			return new WebStatusTracker(InjectionContainer::Instance().Config().statusTrackerPort);
 	}
 	return nullptr;
 }

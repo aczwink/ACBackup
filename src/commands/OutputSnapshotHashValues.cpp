@@ -56,8 +56,8 @@ static int32 OutputSnapshotHashValues(const Snapshot& snapshot, Crypto::HashAlgo
 {
 	InjectionContainer& ic = InjectionContainer::Instance();
 
-	StatusTracker& statusTracker = ic.Get<StatusTracker>();
-	StaticThreadPool& threadPool = ic.Get<StaticThreadPool>();
+	StatusTracker& statusTracker = ic.StatusTracker();
+	StaticThreadPool& threadPool = ic.TaskQueue();
 
 	const BackupNodeIndex& index = snapshot.Index();
 
@@ -90,7 +90,7 @@ static int32 OutputSnapshotHashValues(const Snapshot& snapshot, Crypto::HashAlgo
 
 int32 CommandOutputSnapshotHashValues(const Snapshot& snapshot)
 {
-	return OutputSnapshotHashValues(snapshot, InjectionContainer::Instance().Get<ConfigManager>().Config().hashAlgorithm);
+	return OutputSnapshotHashValues(snapshot, InjectionContainer::Instance().Config().hashAlgorithm);
 }
 
 int32 CommandOutputSnapshotHashValues(const Snapshot& snapshot, const String& hashAlgorithmString)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -63,7 +63,7 @@ private:
 	//Methods
 	NodeIndexDifferences ComputeDifference(const OSFileSystemNodeIndex& sourceIndex, bool updateDefault) const;
 	void EnsureNoDifferenceExists(const OSFileSystemNodeIndex& sourceIndex) const;
-	DynamicArray<Path> ListPathsInIndexDirectory();
+	DynamicArray<String> ListSnapshotMetadataFiles();
 	void ReadInSnapshots();
 
 	//Inline

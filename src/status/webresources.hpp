@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2020 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -21,6 +21,6 @@
 #include "../../resources/ACJSWCL.js.hpp"
 #include "../../resources/clean_light.css.hpp"
 
-byte rsrc_index[] = {
+char8_t rsrc_index[] = {
 #include "../../resources/index.htm"
 };
