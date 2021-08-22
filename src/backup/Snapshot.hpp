@@ -53,6 +53,11 @@ public:
 		return this->name;
 	}
 
+	inline const Snapshot* Previous() const
+	{
+		return this->prev;
+	}
+
 	inline void Previous(Snapshot* newPrevious)
 	{
 		this->prev = newPrevious;

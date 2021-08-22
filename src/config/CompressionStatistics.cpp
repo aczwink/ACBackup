@@ -42,7 +42,7 @@ CompressionStatistics::CompressionStatistics(const Path &path)
 		csvReader.ReadCell(cell);
 		csvReader.ReadCell(rate);
 
-		this->compressionStats[cell] = rate.ToFloat32();
+		this->compressionStats[cell] = Float<float32>::Parse(rate);
 	}
 }
 

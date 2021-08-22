@@ -54,6 +54,9 @@ set(SRC_FILES_SHARED
 add_executable(ACBackup ${SRC_FILES_SHARED} src/main.cpp src/commands/Commands.hpp src/InjectionContainer.hpp src/status/StatusTracker.hpp src/status/StatusTracker.cpp src/status/TerminalStatusTracker.hpp src/config/Config.hpp src/status/ProcessStatus.hpp src/config/ConfigException.hpp src/indexing/FileSystemNodeAttributes.hpp src/status/TerminalStatusTracker.cpp src/status/ProcessStatus.cpp src/commands/VerifySnapshot.cpp src/backupfilesystem/FlatVolumesFile.hpp src/backupfilesystem/FlatVolumesFile.cpp src/backupfilesystem/FlatVolumesDirectory.hpp src/backupfilesystem/FlatVolumesDirectory.cpp src/Serialization.hpp src/status/WebStatusTracker.hpp src/status/WebStatusTracker.cpp src/status/StatusTrackerWebService.hpp src/status/StatusTrackerWebService.cpp src/status/webresources.hpp src/indexing/LinkPointsOutOfIndexDirException.hpp src/backupfilesystem/FlatVolumesLink.hpp src/backupfilesystem/FlatVolumesLink.cpp src/CompressionSetting.hpp src/commands/Diff.cpp src/commands/OutputSnapshotStats.cpp src/commands/OutputSnapshotHashValues.cpp src/StreamPipingFailedException.hpp)
 target_link_libraries(ACBackup Std++ Std++Static)
 
+add_executable(ACBackupViewer ${SRC_FILES_SHARED} src_viewer/main.cpp src_viewer/Nodes.hpp src_viewer/Nodes.cpp src_viewer/DataFileTreeNode.hpp src_viewer/DataFileTreeNode.cpp src_viewer/FileRevisionNode.hpp)
+target_link_libraries(ACBackupViewer Std++ Std++Static)
+
 add_executable(tests_ACBackup ${SRC_FILES_SHARED} src_tests/IntegrationTests/SnapshotManagerTests.cpp src_tests/IntegrationTests/TestBackupCreator.hpp)
 target_link_libraries(tests_ACBackup Std++ Std++Static Std++Test)
 
