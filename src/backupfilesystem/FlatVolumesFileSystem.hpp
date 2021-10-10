@@ -54,6 +54,7 @@ public:
 	void Flush() override;
 	void Move(const Path &from, const Path &to) override;
 	UniquePointer<InputStream> OpenFileForReading(uint32 fileIndex, bool verify) const;
+	UniquePointer<InputStream> OpenFileForReading(const Path &path, bool verify) const override;
 	UniquePointer<InputStream> OpenLinkTargetAsStream(const Path& linkPath, bool verify) const;
 	uint32 ReadBytes(const FlatVolumesBlockInputStream& reader, void *destination, uint64 volumeNumber, uint64 offset, uint32 count) const;
 	void WriteBytes(const VolumesOutputStream& writer, const void* source, uint32 size);
@@ -71,7 +72,6 @@ public:
 
 	//TODO: NOT IMPLEMENTED
 	UniquePointer<DirectoryEnumerator> EnumerateChildren(const Path &path) const override;
-	UniquePointer<InputStream> OpenFileForReading(const Path &path, bool verify) const override;
 	Optional<FileInfo> QueryFileInfo(const Path &path) const override;
 	Optional<Path> ReadLinkTarget(const Path &path) const override;
 	Optional<Errors::CreateDirectoryError> CreateDirectory(const Path &path, const Permissions *permissions) override;

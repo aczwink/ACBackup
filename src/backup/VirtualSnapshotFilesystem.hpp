@@ -30,12 +30,12 @@ public:
 	}
 
 	//Methods
-	SpaceInfo QuerySpace() const override;
-
-	//TODO: NOT IMPLEMENTED
 	UniquePointer<DirectoryEnumerator> EnumerateChildren(const Path &path) const override;
 	UniquePointer<InputStream> OpenFileForReading(const Path &path, bool verify) const override;
 	Optional<FileInfo> QueryFileInfo(const Path &path) const override;
+
+	//TODO: NOT IMPLEMENTED
+	SpaceInfo QuerySpace() const override;
 	Optional<Path> ReadLinkTarget(const Path &path) const override;
 	//TODO: NOT IMPLEMENTED
 

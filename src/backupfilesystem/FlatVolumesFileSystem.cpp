@@ -133,6 +133,11 @@ UniquePointer<InputStream> FlatVolumesFileSystem::OpenFileForReading(uint32 file
 	return chain;
 }
 
+UniquePointer<InputStream> FlatVolumesFileSystem::OpenFileForReading(const Path &path, bool verify) const
+{
+	return this->OpenFileForReading(this->index.GetNodeIndex(path), verify);
+}
+
 UniquePointer<InputStream> FlatVolumesFileSystem::OpenLinkTargetAsStream(const Path& linkPath, bool verify) const
 {
 	uint32 nodeIndex = this->index.GetNodeIndex(linkPath);
@@ -313,12 +318,6 @@ UniquePointer<DirectoryEnumerator> FlatVolumesFileSystem::EnumerateChildren(cons
 {
 	NOT_IMPLEMENTED_ERROR; //TODO: implement me
 	return UniquePointer<DirectoryEnumerator>();
-}
-
-UniquePointer<InputStream> FlatVolumesFileSystem::OpenFileForReading(const Path &path, bool verify) const
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return UniquePointer<InputStream>();
 }
 
 Optional<FileInfo> FlatVolumesFileSystem::QueryFileInfo(const Path &path) const

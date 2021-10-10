@@ -155,7 +155,7 @@ void NodeIndexDifferenceResolver::ComputeNodeDifferences(NodeIndexDifferences& n
 					break;
 			}
 
-			process.IncFileCount();
+			process.IncFinishedCount();
 			process.AddFinishedSize(attributes.Size());
 		});
 	}

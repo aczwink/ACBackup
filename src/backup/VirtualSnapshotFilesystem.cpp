@@ -20,47 +20,101 @@
 #include "VirtualSnapshotFilesystem.hpp"
 
 //Public methods
-/*AutoPointer<const Node> VirtualSnapshotFilesystem::GetNode(const Path &path) const
+UniquePointer<DirectoryEnumerator> VirtualSnapshotFilesystem::EnumerateChildren(const Path &path) const
 {
 	if(!this->snapshot.Index().HasNodeIndex(path))
 		return nullptr;
+
 	uint32 nodeIndex = this->snapshot.Index().GetNodeIndex(path);
+	DynamicArray<uint32> children;
 
-	const BackupNodeAttributes& attributes = this->snapshot.Index().GetNodeAttributes(nodeIndex);
-	const Snapshot* dataSnapshot;
-	Path realNodePath = path;
-	if(attributes.Type() == NodeType::Directory)
-		dataSnapshot = &this->snapshot;
-	else
-		dataSnapshot = this->snapshot.FindDataSnapshot(nodeIndex, realNodePath);
+	auto& index = this->snapshot.Index();
+	for(uint32 i = 0; i < index.GetNumberOfNodes(); i++)
+	{
+		if(i == nodeIndex)
+			continue;
 
-	return dataSnapshot->Filesystem().GetNode(realNodePath);
-}*/
+		const auto& nodePath = index.GetNodePath(i);
+		if(nodePath.GetParent() == path)
+			children.Push(i);
+	}
 
-SpaceInfo VirtualSnapshotFilesystem::QuerySpace() const
-{
-	NOT_IMPLEMENTED_ERROR; //implement me
-	return SpaceInfo();
-}
+	class VirtualDirectoryEnumerator : public DirectoryEnumerator
+	{
+	public:
+		//Constructor
+		inline VirtualDirectoryEnumerator(DynamicArray<uint32>&& children, const BackupNodeIndex& index) : children(Move(children)), index(index)
+		{
+			this->currentIndex = -1;
+		}
 
+		//Methods
+		const DirectoryEntry& GetCurrent() const
+		{
+			return this->directoryEntry;
+		}
 
-//TODO: NOT IMPLEMENTED
-UniquePointer<DirectoryEnumerator> VirtualSnapshotFilesystem::EnumerateChildren(const Path &path) const
-{
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return UniquePointer<DirectoryEnumerator>();
+		bool MoveForward() override
+		{
+			if((this->currentIndex + 1) < this->children.GetNumberOfElements())
+			{
+				this->currentIndex++;
+				uint32 nodeIndex = this->children[this->currentIndex];
+				this->directoryEntry.type = this->index.GetNodeAttributes(nodeIndex).Type();
+				this->directoryEntry.name = this->index.GetNodePath(nodeIndex).GetName();
+				return true;
+			}
+			return false;
+		}
+
+	private:
+		//Members
+		DynamicArray<uint32> children;
+		const BackupNodeIndex& index;
+		int32 currentIndex;
+		DirectoryEntry directoryEntry;
+	};
+
+	return new VirtualDirectoryEnumerator(Move(children), index);
 }
 
 UniquePointer<InputStream> VirtualSnapshotFilesystem::OpenFileForReading(const Path &path, bool verify) const
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return UniquePointer<InputStream>();
+	if(!this->snapshot.Index().HasNodeIndex(path))
+		return nullptr;
+
+	uint32 nodeIndex = this->snapshot.Index().GetNodeIndex(path);
+	Path snapshotPath;
+	const Snapshot* dataSnapshot = this->snapshot.FindDataSnapshot(nodeIndex, snapshotPath);
+
+	return dataSnapshot->Filesystem().OpenFileForReading(snapshotPath, true);
 }
 
 Optional<FileInfo> VirtualSnapshotFilesystem::QueryFileInfo(const Path &path) const
 {
-	NOT_IMPLEMENTED_ERROR; //TODO: implement me
-	return Optional<FileInfo>();
+	if(!this->snapshot.Index().HasNodeIndex(path))
+		return {};
+
+	uint32 nodeIndex = this->snapshot.Index().GetNodeIndex(path);
+
+	const BackupNodeAttributes& attributes = this->snapshot.Index().GetNodeAttributes(nodeIndex);
+
+	FileInfo fileInfo;
+	fileInfo.type = attributes.Type();
+	fileInfo.size = attributes.Size();
+	fileInfo.lastModifiedTime = attributes.LastModifiedTime();
+	fileInfo.permissions = attributes.Permissions().Clone();
+	fileInfo.storedSize = attributes.ComputeSumOfBlockSizes();
+
+	return fileInfo;
+}
+
+
+//TODO: NOT IMPLEMENTED
+SpaceInfo VirtualSnapshotFilesystem::QuerySpace() const
+{
+	NOT_IMPLEMENTED_ERROR; //implement me
+	return SpaceInfo();
 }
 
 Optional<Path> VirtualSnapshotFilesystem::ReadLinkTarget(const Path &path) const
