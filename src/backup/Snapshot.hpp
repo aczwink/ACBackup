@@ -84,7 +84,7 @@ public:
 	//Inline
 	inline uint64 ComputeSize() const
 	{
-		return this->index->ComputeSumOfBlockSizes();
+		return this->index->ComputeSumOfOwnedBlockSizes();
 	}
 
 	inline void WriteProtect()

@@ -109,24 +109,25 @@ DynamicArray<uint32> SnapshotManager::VerifySnapshot(const Snapshot &snapshot, b
 	Mutex failedFilesLock;
 	for(uint32 i = 0; i < index.GetNumberOfNodes(); i++)
 	{
-		threadPool.EnqueueTask([&snapshot, i, full, &index, &process, &failedNodes, &failedFilesLock]()
+		threadPool.EnqueueTask([&snapshot, i, full, &process, &failedNodes, &failedFilesLock]()
 		{
 			const BackupNodeAttributes &nodeAttributes = snapshot.Index().GetNodeAttributes(i);
-			if(nodeAttributes.Type() == FileType::Directory)
-				return;
-			Path realNodePath;
-			const Snapshot* dataSnapshot = snapshot.FindDataSnapshot(i, realNodePath);
-			if(full || (dataSnapshot == &snapshot))
+			if(nodeAttributes.Type() != FileType::Directory)
 			{
-				if (!dataSnapshot->VerifyNode(realNodePath))
+				Path realNodePath;
+				const Snapshot* dataSnapshot = snapshot.FindDataSnapshot(i, realNodePath);
+				if(full || (dataSnapshot == &snapshot))
 				{
-					failedFilesLock.Lock();
-					failedNodes.Push(i);
-					failedFilesLock.Unlock();
+					if (!dataSnapshot->VerifyNode(realNodePath))
+					{
+						failedFilesLock.Lock();
+						failedNodes.Push(i);
+						failedFilesLock.Unlock();
+					}
+					process.AddFinishedSize(nodeAttributes.Size());
 				}
-				process.AddFinishedSize(nodeAttributes.Size());
-				process.IncFinishedCount();
 			}
+			process.IncFinishedCount();
 		});
 	}
 

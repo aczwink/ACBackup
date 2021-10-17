@@ -148,6 +148,21 @@ uint64 BackupNodeIndex::ComputeSumOfBlockSizes() const
 	return sum;
 }
 
+uint64 BackupNodeIndex::ComputeSumOfOwnedBlockSizes() const
+{
+	uint64 sum = 0;
+	for(uint32 i = 0; i < this->GetNumberOfNodes(); i++)
+	{
+		const BackupNodeAttributes& attributes = this->GetNodeAttributes(i);
+		if(attributes.OwnsBlocks())
+		{
+			for (const Block &block : attributes.Blocks())
+				sum += block.size;
+		}
+	}
+	return sum;
+}
+
 uint32 BackupNodeIndex::FindNodeIndexByHash(const String& hash) const
 {
 	if(this->hashIndex.Contains(hash))

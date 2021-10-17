@@ -30,6 +30,7 @@ public:
 
 	//Methods
 	uint64 ComputeSumOfBlockSizes() const;
+	uint64 ComputeSumOfOwnedBlockSizes() const;
 	uint32 FindNodeIndexByHash(const String& hash) const;
 	FileInfo GetFileSystemNodeInfo(uint32 nodeIndex) const;
 	void Serialize(Serialization::XmlSerializer& xmlSerializer) const;
