@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2022 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -58,7 +58,7 @@ Snapshot::Snapshot()
 	this->fileSystem = new FlatVolumesFileSystem(dataPath / this->name, *this->index);
 }
 
-Snapshot::Snapshot(const String& name, Serialization::XmlDeserializer& xmlDeserializer)
+Snapshot::Snapshot(const String& name, Serialization::XMLDeserializer& xmlDeserializer)
 {
 	this->name = name;
 	this->prev = nullptr;
@@ -341,7 +341,7 @@ UniquePointer<Snapshot> Snapshot::Deserialize(const Path &path)
 		UniquePointer<Crypto::HashFunction> hashFunction = Crypto::HashFunction::CreateInstance(protection.hashAlgorithm);
 		Crypto::HashingInputStream hashingInputStream(*decompressor, hashFunction.operator->());
 
-		Serialization::XmlDeserializer deserializer(hashingInputStream);
+		Serialization::XMLDeserializer deserializer(hashingInputStream);
 
 		Path name(title); //strip of .xml
 		UniquePointer<Snapshot> snapshot = new Snapshot(name.GetTitle(), deserializer);

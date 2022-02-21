@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2022 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -23,6 +23,7 @@ using namespace StdXX::FileSystem;
 //Local
 #include "FileSystemNodeIndex.hpp"
 #include "../status/ProcessStatus.hpp"
+#include "Filtering/FileFilter.hpp"
 
 class OSFileSystemNodeIndex : public FileSystemNodeIndex
 {
@@ -38,11 +39,14 @@ public:
 private:
 	//Members
 	Path basePath;
+	DynamicArray<UniquePointer<FileFilter>> fileFilters;
 
 	//Methods
 	void GenerateIndex();
 	void IndexDirectoryChildren(const Path& path, ProcessStatus& findStatus);
-	void IndexNode(const Path& nodePath, ProcessStatus& findStatus);
+	void IndexFile(const Path& nodePath, ProcessStatus& findStatus);
+	bool ShouldFileBeIndexed(const Path& filePath) const;
+	void VerifyThatLinkPointsInsideBackupPath(const Path& filePath, const File& file);
 
 	//Inline
 	inline Path MapNodePathToFileSystemPath(const Path &nodePath) const

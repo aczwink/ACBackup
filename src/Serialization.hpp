@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2022 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -66,9 +66,5 @@ namespace StdXX::Serialization
     inline XmlSerializer& operator<<(XmlSerializer& serializer, const Binding<CompressionSetting>& binding)
     {
         return operator<<<XmlSerializer>(serializer, binding);
-    }
-    inline XmlDeserializer& operator>>(XmlDeserializer& deserializer, const Binding<CompressionSetting>& binding)
-    {
-        return operator>><XmlDeserializer>(deserializer, binding);
     }
 }

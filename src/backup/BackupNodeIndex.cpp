@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2022 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -118,7 +118,7 @@ namespace StdXX::Serialization
 }
 
 //Constructor
-BackupNodeIndex::BackupNodeIndex(XmlDeserializer &xmlDeserializer)
+BackupNodeIndex::BackupNodeIndex(XMLDeserializer &xmlDeserializer)
 {
 	xmlDeserializer.EnterElement(c_tag_snapshotIndex_name);
 	xmlDeserializer.EnterElement(c_tag_nodes_name);
@@ -210,7 +210,7 @@ void BackupNodeIndex::ComputeNodeChildren()
 	}
 }
 
-DynamicArray<Block> BackupNodeIndex::DeserializeBlocks(XmlDeserializer &xmlDeserializer, bool& ownsBlocks, Optional<enum CompressionSetting>& compressionSetting, Optional<Path>& owner)
+DynamicArray<Block> BackupNodeIndex::DeserializeBlocks(XMLDeserializer &xmlDeserializer, bool& ownsBlocks, Optional<enum CompressionSetting>& compressionSetting, Optional<Path>& owner)
 {
 	if(!xmlDeserializer.HasChildElement(c_tag_node_blocks_name))
 		return {};
@@ -238,7 +238,7 @@ DynamicArray<Block> BackupNodeIndex::DeserializeBlocks(XmlDeserializer &xmlDeser
 	return blocks;
 }
 
-BinaryTreeMap<Crypto::HashAlgorithm, String> BackupNodeIndex::DeserializeHashes(Serialization::XmlDeserializer &xmlDeserializer)
+BinaryTreeMap<Crypto::HashAlgorithm, String> BackupNodeIndex::DeserializeHashes(Serialization::XMLDeserializer &xmlDeserializer)
 {
 	if(!xmlDeserializer.HasChildElement(c_tag_node_hashValues_name))
 		return {};
@@ -260,7 +260,7 @@ BinaryTreeMap<Crypto::HashAlgorithm, String> BackupNodeIndex::DeserializeHashes(
 	return result;
 }
 
-void BackupNodeIndex::DeserializeNode(XmlDeserializer& xmlDeserializer)
+void BackupNodeIndex::DeserializeNode(XMLDeserializer& xmlDeserializer)
 {
 	xmlDeserializer.EnterAttributes();
 
@@ -299,7 +299,7 @@ void BackupNodeIndex::DeserializeNode(XmlDeserializer& xmlDeserializer)
 	this->AddNode(path, Move(attributes));
 }
 
-UniquePointer<Permissions> BackupNodeIndex::DeserializePermissions(XmlDeserializer &xmlDeserializer)
+UniquePointer<Permissions> BackupNodeIndex::DeserializePermissions(XMLDeserializer &xmlDeserializer)
 {
     xmlDeserializer.EnterElement(c_tag_node_permissions_name);
     xmlDeserializer.EnterAttributes();

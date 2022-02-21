@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2022 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -103,7 +103,7 @@ private:
 	UniquePointer<FlatVolumesFileSystem> fileSystem;
 
 	//Constructor
-	Snapshot(const String& name, Serialization::XmlDeserializer& xmlDeserializer);
+	Snapshot(const String& name, Serialization::XMLDeserializer& xmlDeserializer);
 
 	//Properties
 	inline Path IndexFilePath() const

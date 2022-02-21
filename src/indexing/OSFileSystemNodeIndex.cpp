@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2021 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2019-2022 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -24,10 +24,19 @@
 #include "LinkPointsOutOfIndexDirException.hpp"
 #include "../config/ConfigManager.hpp"
 #include "../StreamPipingFailedException.hpp"
+#include "Filtering/ThumbsDbFilter.hpp"
+#include "Filtering/DesktopIniFilter.hpp"
+#include "Filtering/AppleDoubleFilter.hpp"
+#include "Filtering/AppleDesktopServicesStoreFilter.hpp"
 
 //Constructor
 OSFileSystemNodeIndex::OSFileSystemNodeIndex(const Path &path) : basePath(path)
 {
+    this->fileFilters.Push(new AppleDesktopServicesStoreFilter);
+	this->fileFilters.Push(new AppleDoubleFilter);
+    this->fileFilters.Push(new DesktopIniFilter);
+    this->fileFilters.Push(new ThumbsDbFilter);
+
 	this->GenerateIndex();
 }
 
@@ -77,7 +86,7 @@ void OSFileSystemNodeIndex::GenerateIndex()
 	InjectionContainer& ic = InjectionContainer::Instance();
 
 	ProcessStatus& findStatus = ic.StatusTracker().AddProcessStatusTracker(u8"Reading directory");
-	this->IndexNode(String(u8"/"), findStatus);
+	this->IndexFile(String(u8"/"), findStatus);
 	findStatus.Finished();
 }
 
@@ -87,35 +96,51 @@ void OSFileSystemNodeIndex::IndexDirectoryChildren(const Path& path, ProcessStat
 
 	for(const DirectoryEntry& child : dir)
 	{
-		this->IndexNode(path / child.name, findStatus);
+		this->IndexFile(path / child.name, findStatus);
 	}
 }
 
-void OSFileSystemNodeIndex::IndexNode(const Path& nodePath, ProcessStatus& findStatus)
+void OSFileSystemNodeIndex::IndexFile(const Path& filePath, ProcessStatus& findStatus)
 {
-	File node(this->MapNodePathToFileSystemPath(nodePath));
+	File file(this->MapNodePathToFileSystemPath(filePath));
 
-	if(node.Type() == FileType::Link)
-	{
-		Path target = node.ReadLinkTarget();
+	if( (file.Type() == FileType::File) and !this->ShouldFileBeIndexed(filePath) )
+		return;
+	if(file.Type() == FileType::Link)
+		this->VerifyThatLinkPointsInsideBackupPath(filePath, file);
 
-		//check if target points out
-		Path absoluteTarget;
-		if(target.IsRelative())
-			absoluteTarget = this->MapNodePathToFileSystemPath(nodePath.GetParent() / target);
-		else
-			absoluteTarget = target;
-
-		if(!this->basePath.IsParentOf(absoluteTarget))
-			throw LinkPointsOutOfIndexDirException();
-	}
-
-	UniquePointer<FileSystemNodeAttributes> attributes = new FileSystemNodeAttributes(node.Info());
+	UniquePointer<FileSystemNodeAttributes> attributes = new FileSystemNodeAttributes(file.Info());
 
 	findStatus.AddTotalSize(attributes->Size());
-	this->AddNode(nodePath, Move(attributes));
+	this->AddNode(filePath, Move(attributes));
 	findStatus.IncFileCount();
 
-	if(node.Type() == FileType::Directory)
-		this->IndexDirectoryChildren(nodePath, findStatus);
+	if(file.Type() == FileType::Directory)
+		this->IndexDirectoryChildren(filePath, findStatus);
+}
+
+bool OSFileSystemNodeIndex::ShouldFileBeIndexed(const Path &filePath) const
+{
+	Path fsPath = this->MapNodePathToFileSystemPath(filePath);
+	for(const auto& filter : this->fileFilters)
+	{
+		if(filter->Matches(fsPath))
+			return false;
+	}
+	return true;
+}
+
+void OSFileSystemNodeIndex::VerifyThatLinkPointsInsideBackupPath(const Path& filePath, const File& file)
+{
+	Path target = file.ReadLinkTarget();
+
+	//check if target points out
+	Path absoluteTarget;
+	if(target.IsRelative())
+		absoluteTarget = this->MapNodePathToFileSystemPath(filePath.GetParent() / target);
+	else
+		absoluteTarget = target;
+
+	if(!this->basePath.IsParentOf(absoluteTarget))
+		throw LinkPointsOutOfIndexDirException();
 }

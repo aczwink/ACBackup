@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2021 Amir Czwink (amir130@hotmail.de)
+ * Copyright (c) 2020-2022 Amir Czwink (amir130@hotmail.de)
  *
  * This file is part of ACBackup.
  *
@@ -26,7 +26,7 @@ class BackupNodeIndex : public FileSystemNodeIndex
 public:
 	//Constructors
 	BackupNodeIndex() = default;
-	BackupNodeIndex(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
+	BackupNodeIndex(StdXX::Serialization::XMLDeserializer& xmlDeserializer);
 
 	//Methods
 	uint64 ComputeSumOfBlockSizes() const;
@@ -67,10 +67,10 @@ private:
 
 	//Methods
 	void ComputeNodeChildren();
-	DynamicArray<Block> DeserializeBlocks(StdXX::Serialization::XmlDeserializer& xmlDeserializer, bool& ownsBlocks, Optional<enum CompressionSetting>& compressionSetting, Optional<Path>& owner);
-	BinaryTreeMap<Crypto::HashAlgorithm, String> DeserializeHashes(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
-	void DeserializeNode(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
-	UniquePointer<Permissions> DeserializePermissions(StdXX::Serialization::XmlDeserializer& xmlDeserializer);
+	DynamicArray<Block> DeserializeBlocks(StdXX::Serialization::XMLDeserializer& xmlDeserializer, bool& ownsBlocks, Optional<enum CompressionSetting>& compressionSetting, Optional<Path>& owner);
+	BinaryTreeMap<Crypto::HashAlgorithm, String> DeserializeHashes(StdXX::Serialization::XMLDeserializer& xmlDeserializer);
+	void DeserializeNode(StdXX::Serialization::XMLDeserializer& xmlDeserializer);
+	UniquePointer<Permissions> DeserializePermissions(StdXX::Serialization::XMLDeserializer& xmlDeserializer);
     void GenerateHashIndex();
 	void SerializeBlocks(Serialization::XmlSerializer& xmlSerializer, const DynamicArray<Block>& blocks, bool ownsBlocks, Optional<CompressionSetting>& compressionSetting, Optional<Path>& owner) const;
 	void SerializeHashes(Serialization::XmlSerializer& xmlSerializer, const BinaryTreeMap<Crypto::HashAlgorithm, String>& hashes) const;
