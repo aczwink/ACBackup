@@ -37,10 +37,6 @@ set(SRC_FILES_SHARED
 	src/config/ConfigManager.cpp
 	src/config/ConfigManager.hpp
 
-	src/indexing/Filtering/AppleDesktopServicesStoreFilter.cpp
-	src/indexing/Filtering/AppleDesktopServicesStoreFilter.hpp
-	src/indexing/Filtering/AppleDoubleFilter.cpp
-	src/indexing/Filtering/AppleDoubleFilter.hpp
 	src/indexing/Filtering/DesktopIniFilter.cpp
 	src/indexing/Filtering/DesktopIniFilter.hpp
 	src/indexing/Filtering/ThumbsDbFilter.cpp
